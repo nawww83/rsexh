@@ -1,0 +1,3 @@
+/home/novikov/rsexh/build/CMakeFiles/multifile.dir
+/home/novikov/rsexh/build/CMakeFiles/edit_cache.dir
+/home/novikov/rsexh/build/CMakeFiles/rebuild_cache.dir
