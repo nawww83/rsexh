@@ -185,7 +185,7 @@
  {
     is_ok = true; // Признак успешности преобразования.
     const int R = H.size();
-    const int N = H.at( 0 ).size();
+    const int N = H.empty() ? 0 : H.at( 0 ).size();
     auto result = H;
     std::vector<std::pair<int, int>> swaps;
     std::pair<int, int> swaped_indexes;
@@ -327,9 +327,9 @@
     /**
      * Декодировать принятый вектор в режиме стирания ошибки.
      */
-    bool Decode( CodeWord< T, M >& v )
+    bool Decode( CodeWord< T, M >& v, int& erased )
     {
-       assert(v.size() == N);
+       assert(v.size() == N && "Input size is wrong");
        auto& parity_check = mIsSystematic ? mHsys : mH;
        // Определяем индексы стертых символов.
        std::vector< int > ids;
@@ -338,7 +338,7 @@
           if( v.at( i ).mStatus == SymbolStatus::Erased )
              ids.push_back( i );
        }
-       const int erased = ids.size();
+       erased = ids.size();
        if( erased >= D )
           return false;
        // Выбираем часть проверочной матрицы - подматрицу.

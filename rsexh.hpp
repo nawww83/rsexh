@@ -71,7 +71,7 @@ namespace rsexh {
     template< int p, int q >
     inline std::vector< int > CalculateSyndrome( const std::vector< int >& v, int R, const gf::GF< p, q >& gf )
     {   
-        const int N = v.size();
+        const int N = std::pow( p, q ) - 1;
         std::vector< int > result;
         for( int i = 0; i < R; ++i ) // Строки H.
         {
@@ -79,12 +79,12 @@ namespace rsexh {
             int result_idx = -1;
             for( int j = 0; j < N; ++j ) // Столбцы H.
             {
-                const int mult_idx = gf.Mult( v.at( j ), idx );
+                const int mult_idx = gf.Mult( v.at( j ) - 1, idx );
                 result_idx = gf.Add( mult_idx, result_idx );
                 idx += ( i + 1 ); // Индекс элемента матрицы H.
                 idx %= N;
             }
-            result.push_back( result_idx );
+            result.push_back( result_idx + 1 );
         }
         return result;
     }
@@ -96,7 +96,10 @@ namespace rsexh {
     inline std::vector< int > Encode( const std::vector< int >& a, const gf::GF< p, q >& gf)
     {
         const int N = std::pow( p, q ) - 1;
-        std::vector< int > a_padded = a;
+        std::vector< int > a_padded;
+        for (auto el : a) {
+            a_padded.push_back(el - 1);
+        }
         std::vector< int > result;
         // Дополнение нулями справа. Минус единица - это индекс, которому соответствует нуль-элемент поля.
         const int K = a.size();
@@ -116,7 +119,7 @@ namespace rsexh {
                 idx += step;
                 idx %= N;
             }
-            result.push_back(result_idx);
+            result.push_back(result_idx + 1);
         }
         return result;
     }
@@ -128,7 +131,7 @@ namespace rsexh {
     template< int p, int q >
     inline std::vector< int > Decode( const std::vector< int >& v, int R, const gf::GF< p, q >& gf)
     {
-        const int N = v.size();
+        const int N = std::pow( p, q ) - 1;
         std::vector< int > result;
         // a' = v * F', F' - квадратная матрица, обратная матрице F.
         for (int i = 0; i < N; ++i) { // По столбцам матрицы F'.
@@ -136,17 +139,17 @@ namespace rsexh {
             int idx = 0;
             int result_idx = -1;
             for (int j = 0; j < N; ++j) { // По строкам i-го столбца.
-                const int mult_idx = gf.Mult( v.at( j ), idx );
+                const int mult_idx = gf.Mult( v.at( j ) - 1, idx );
                 result_idx = gf.Add( mult_idx, result_idx );
                 idx += (step + N);
                 idx %= N;
             }
-            result.push_back(result_idx);
+            result.push_back(result_idx + 1);
         }
         assert(K > 0);
         const int K = N - R;
         while (result.size() > K) {
-            assert(result.back() == -1);
+            assert(result.back() == 0);
             result.pop_back();
         }
         return result;
@@ -178,8 +181,8 @@ namespace rsexh {
         gf::GF< p, q > mGf{ mLut };
         // Таблица соответствия синдромов и им соответствующих однократных ошибок (1-ошибок).
         std::unordered_map< std::vector< int >, std::pair<int, int>, gf::KeyHasher2 > mLut_1_errors;
-        static constexpr int R2 = 6; // Количество проверочных символов расширенного кода Хэмминга.
-        static constexpr int M2 = 15; // Количество внутренних символов расширенного кода Хэмминга.
+        static constexpr int R2 = 6;  // Количество проверочных символов расширенного кода Хэмминга.
+        static constexpr int M2 = 11; // Количество внутренних символов расширенного кода Хэмминга.
         hamming::HammingExtended< R2, M2, int > mHammingCode;
 
         /**
@@ -190,11 +193,11 @@ namespace rsexh {
             assert(mIsGood);
             mLut_1_errors.clear();
             const int N = std::pow( p, q ) - 1;
-            mLut_1_errors.reserve( N * q );
+            mLut_1_errors.reserve( N * (N-1) );
             std::vector< int > c( R ); // Синдром.
             for( int i = 0; i < N; ++i )
             {
-                for( int j = 0; j < q; ++j )
+                for( int j = 0; j < N - 1; ++j )
                 {
                     for( int ii = 0; ii < R; ++ii ) // Строки проверочной матрицы H.
                     {
@@ -202,9 +205,9 @@ namespace rsexh {
                         int result_idx = -1;
                         idx += i * ( ii + 1 );
                         idx %= N;
-                        int mult_idx = mGf.Mult( idx + j, 0 );
+                        int mult_idx = mGf.Mult( idx + j, 0 ); // ? idx + j, 0
                         result_idx = mGf.Add( mult_idx, result_idx );
-                        c[ ii ] = result_idx;
+                        c[ ii ] = result_idx + 1;
                     }
                     mLut_1_errors[ c ] = std::make_pair(i, j); // Позиция и значение 1-кратной ошибки.
                 }
