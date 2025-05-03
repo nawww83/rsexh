@@ -92,6 +92,7 @@
  template< typename T >
  inline bool FormLeadBySum( int i, Matrix< T >& H, int column_idx = -1 )
  {
+    assert(!H.empty());
     int R = H.size();
     int N = H.at( 0 ).size();
     const int column = column_idx == -1 ? N - R + i : column_idx;
@@ -126,6 +127,7 @@
  template< typename T >
  inline std::pair<bool, std::pair<int, int>> FormLeadBySwap( int i, Matrix< T >& H, int column_idx = -1, const std::vector< int >& columns = {} )
  {
+   assert(!H.empty());
     int R = H.size();
     int N = H.at( 0 ).size();
     const int column = column_idx == -1 ? N - R + i : column_idx;
@@ -188,6 +190,9 @@
     const int N = H.empty() ? 0 : H.at( 0 ).size();
     auto result = H;
     std::vector<std::pair<int, int>> swaps;
+    if (H.empty()) {
+      return std::make_pair(result, swaps);
+    }
     std::pair<int, int> swaped_indexes;
     // Формирование верхней треугольной матрицы (справа).
     for( int i = R - 1; i >= 0; --i )
@@ -395,13 +400,19 @@
        // Делаем подматрицу систематической для прямого решения СЛАУ - восстановления стертых символов.
        bool is_ok;
        std::tie(selected, std::ignore) = MakeParityMatrixSystematic( selected, is_ok, ids );
+       const bool matrix_reduced = selected.size() < erased;
+       const bool matrix_expanded = selected.size() > erased;
+       assert(!matrix_reduced && "Matrix reduced!");
+       assert(!matrix_expanded && "Matrix expanded!");
        // Восстанавливаем стертые символы.
-       for( int i = 0; i < erased; ++i )
+       for( int i = 0; i < std::min(selected.size(), ids.size()); ++i )
        {
+         // std::cout << "i: " << i << ", M: " << M << ", v size: " << v.size() << std::endl;
           CodeElement< T, M > recovered{ .mStatus = SymbolStatus::Normal, .mSymbol = {} };
           const int idx = ids.at( i );
           for( int k = 0; k < N; ++k )
           {
+            // std::cout << "k: " << k << ", idx: " << idx << ", selected size: " << selected.size() << ", erased: " << erased << std::endl;
              if( k == idx )
                 continue;
              if( selected.at( i ).at( k ) != 0 )

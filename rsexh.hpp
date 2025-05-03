@@ -43,6 +43,52 @@ namespace rsexh {
         }
     }
 
+    template< int p, int q >
+    static void ShiftLeftSyndrome( std::vector< int >& c )
+    {
+        const int N = std::pow( p, q ) - 1;
+        const int R = c.size();
+        int shift = 0;
+        for( int i = 0; i < R; ++i ) // rows of H.
+        {
+            shift++;
+            const int idx = c.at( i ) - 1;
+            const int result_idx = idx >= 0 ? ( idx - shift + N ) % N : -1;
+            c[ i ] = result_idx + 1;
+        }
+    }
+
+    template< int p, int q >
+    static std::vector< int > ShiftLeftSyndrome( const std::vector< int >& c )
+    {
+        std::vector< int > result = c;
+        ShiftLeftSyndrome< p, q >( result );
+        return result;
+    }
+
+    template< int p, int q >
+    static void ShiftRightSyndrome( std::vector< int >& c )
+    {
+        const int N = std::pow( p, q ) - 1;
+        const int R = c.size();
+        int shift = 0;
+        for( int i = 0; i < R; ++i ) // rows of H.
+        {
+            shift++;
+            const int idx = c.at( i ) - 1;
+            const int result_idx = idx >= 0 ? ( idx + shift ) % N : -1;
+            c[ i ] = result_idx + 1;
+        }
+    }
+
+    template< int p, int q >
+    static std::vector< int > ShiftRightSyndrome( const std::vector< int >& c )
+    {
+        std::vector< int > result = c;
+        ShiftRightSyndrome< p, q >( result );
+        return result;
+    }   
+
     /**
      * Сформировать проверочную матрицу кода Рида-Соломона (несистематический код).
      */
@@ -146,8 +192,8 @@ namespace rsexh {
             }
             result.push_back(result_idx + 1);
         }
-        assert(K > 0);
         const int K = N - R;
+        assert(K > 0);
         while (result.size() > K) {
             assert(result.back() == 0);
             result.pop_back();
@@ -181,6 +227,8 @@ namespace rsexh {
         gf::GF< p, q > mGf{ mLut };
         // Таблица соответствия синдромов и им соответствующих однократных ошибок (1-ошибок).
         std::unordered_map< std::vector< int >, std::pair<int, int>, gf::KeyHasher2 > mLut_1_errors;
+        // Таблица соответствия синдромов и им соответствующих двухкратных ошибок (2-ошибок).
+        std::unordered_map< std::vector< int >, std::pair<int, std::pair<int, int>>, gf::KeyHasher2 > mLut_2_errors;
         static constexpr int R2 = 6;  // Количество проверочных символов расширенного кода Хэмминга.
         static constexpr int M2 = 11; // Количество внутренних символов расширенного кода Хэмминга.
         hamming::HammingExtended< R2, M2, int > mHammingCode;
@@ -192,24 +240,58 @@ namespace rsexh {
         {
             assert(mIsGood);
             mLut_1_errors.clear();
+            mLut_2_errors.clear();
             const int N = std::pow( p, q ) - 1;
-            mLut_1_errors.reserve( N * (N-1) );
-            std::vector< int > c( R ); // Синдром.
-            for( int i = 0; i < N; ++i )
             {
-                for( int j = 0; j < N - 1; ++j )
+                mLut_1_errors.reserve( N * (N - 1) );
+                std::vector< int > c( R ); // Синдром.
+                for( int i = 0; i < N; ++i )
                 {
-                    for( int ii = 0; ii < R; ++ii ) // Строки проверочной матрицы H.
+                    for( int j = 0; j < N - 1; ++j ) // Значения ошибки.
                     {
-                        int idx = 0;
-                        int result_idx = -1;
-                        idx += i * ( ii + 1 );
-                        idx %= N;
-                        int mult_idx = mGf.Mult( idx + j, 0 ); // ? idx + j, 0
-                        result_idx = mGf.Add( mult_idx, result_idx );
-                        c[ ii ] = result_idx + 1;
+                        for( int ii = 0; ii < R; ++ii ) // Строки проверочной матрицы H.
+                        {
+                            int idx = 0;
+                            int result_idx = -1;
+                            idx += i * ( ii + 1 );
+                            idx %= N;
+                            int mult_idx = mGf.Mult( idx + j, 0 ); // ? idx + j, 0
+                            result_idx = mGf.Add( mult_idx, result_idx );
+                            c[ ii ] = result_idx + 1;
+                        }
+                        mLut_1_errors[ c ] = std::make_pair(i, j); // Позиция и значение 1-кратной ошибки.
                     }
-                    mLut_1_errors[ c ] = std::make_pair(i, j); // Позиция и значение 1-кратной ошибки.
+                }
+            }
+            {
+                mLut_2_errors.reserve( N * (N - 1) * (N - 1) );
+                std::vector< int > c( R );
+                for( int j1 = 0; j1 < N - 1; ++j1 ) // Значения ошибки первого столбца. 
+                // Для экономии памяти считаем, что первый столбец всегда на первой позиции (т.е. индекс 0).
+                {
+                    for( int i = 1; i < N; ++i ) // Индексы второго столбца H.
+                    {
+                        for( int j2 = 0; j2 < N - 1; ++j2 ) // Значения ошибки второго столбца.
+                        {
+                            for( int ii = 0; ii < R; ++ii ) // Строки проверочной матрицы H.
+                            {
+                                int idx = 0;
+                                int result_idx = -1;
+                                {
+                                    // 1. Первый столбец.
+                                    int mult_idx = mGf.Mult( j1, 0 );
+                                    result_idx = mGf.Add( mult_idx, -1 );
+                                    // 2. Второй столбец.
+                                    idx += i * ( ii + 1 );
+                                    idx %= N;
+                                    mult_idx = mGf.Mult( j2, idx );
+                                    result_idx = mGf.Add( mult_idx, result_idx );
+                                }
+                                c[ ii ] = result_idx + 1;
+                            } 
+                            mLut_2_errors[ c ] = std::make_pair(i, std::make_pair(j1, j2));
+                        }
+                    }
                 }
             }
         }
