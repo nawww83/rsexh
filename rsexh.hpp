@@ -239,6 +239,11 @@ namespace rsexh {
         RsExh()
         {
             assert(mIsGood);
+            if (!mIsGood) {
+                std::cout << "Polynomial is not good for RS code!\n";
+                return;
+            }
+            std::cout << "Polynomial is good\n";
             mLut_1_errors.clear();
             mLut_2_errors.clear();
             const int N = std::pow( p, q ) - 1;

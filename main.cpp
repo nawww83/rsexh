@@ -130,7 +130,7 @@ void test_rs_correct_2(int position_1, int position_2, int val_1, int val_2, int
 }
 
 double measure_ber(double ber, int factor) {
-   rsexh::RsExh code;
+   static rsexh::RsExh code;
    // std::cout << "N: " << code.N << '\n';
    hamming::CodeWord<int, code.M2> a(code.mHammingCode.K);
    hamming::CodeWord<int, code.M2> a_received(code.mHammingCode.N);
@@ -145,7 +145,7 @@ double measure_ber(double ber, int factor) {
          for (auto& symbol : el.mSymbol)
             symbol = roll_uint() & 15; // Полубайты.
       }
-      bits_transmitted += code.K * code.M2 * 4;
+      bits_transmitted += code.mHammingCode.K * code.M2 * 4;
       // hamming::show_codeword(a, code, "Input a: ");
       // Hamming encode
       // std::cout << "Hamming encode\n";
@@ -167,40 +167,41 @@ double measure_ber(double ber, int factor) {
          v.back().push_back(crc);
       }
       // Channel
-      std::vector<int> error_q; // Кратности ошибки.
-      std::vector<std::vector<int>> errors; // Ошибки.
+      // std::vector<int> error_q; // Кратности ошибки.
+      // std::vector<std::vector<int>> errors; // Ошибки.
       for (int pos1 = 0; auto& el : v) {
-         error_q.push_back(0);
-         errors.push_back({});
+         // error_q.push_back(0);
+         // errors.push_back({});
          for (int pos2 = 0; auto& el2 : el) {
-            if (pos2 == (el.size() - 1)) {
-               break;
-            }
-            errors.back().push_back(0);
-            bool was_error = false;
+            // if (pos2 == (el.size() - 1)) {
+            //    break;
+            // }
+            // errors.back().push_back(0);
+            // bool was_error = false;
             for (int i=0; i<4; ++i) {
                const bool error = roll_error(ber);
-               was_error |= error;
+               // was_error |= error;
                // if (error)
                   // std::cout << "Make error: pos1: " << pos1 << ", pos2: " << pos2 << '\n';
                el2 ^= (static_cast<int>(error) << i); // Полубайт.
-               errors.back().back() ^= (static_cast<int>(error) << i);
+               // errors.back().back() ^= (static_cast<int>(error) << i);
             }
-            error_q.back() += was_error;
+            // error_q.back() += was_error;
             pos2++;
          }
          pos1++;
       }
-      bool was_3rd = false;
-      int sum_q = 0;
-      for (auto q : error_q) {
-         was_3rd |= q >= 2;
-         sum_q += q;
-      }
+      // bool was_3rd = false;
+      // int sum_q = 0;
+      // for (auto q : error_q) {
+      //    was_3rd |= q >= 2;
+      //    sum_q += q;
+      // }
       // Decode
       // std::cout << "Decode RS\n";
       for (int i = 0; auto& el : v) {
          a_received[i].mStatus = hamming::SymbolStatus::Uninitialized;
+         // std::cout << "Calculate cyndrome 1\n";
          auto c = rsexh::CalculateSyndrome(el, code.R, code.mGf);
          bool is_ok = true;
          for (const auto& el_c: c) {
@@ -253,6 +254,7 @@ double measure_ber(double ber, int factor) {
             i++;
             continue;
          }
+         // std::cout << "Calculate cyndrome 2\n";
          auto c = rsexh::CalculateSyndrome(el, code.R, code.mGf);
          bool is_ok = true;
          for (const auto& el_c: c) {
@@ -261,22 +263,24 @@ double measure_ber(double ber, int factor) {
          if (!is_ok) {
             // std::cout << "First cyndrome check: " << "Failure" << '\n';
             // 2-кратные ошибки.
-            int crc_before = 0;
-            for (auto el2 : el) {
-               crc_before ^= el2;
-            }
+            // int crc_before = 0;
+            // for (auto el2 : el) {
+            //    crc_before ^= el2;
+            // }
             for (int k = 0; k < code.N - 1; k++) {
                if (auto it = code.mLut_2_errors.find(c); it != code.mLut_2_errors.end()) {
                   // if (was_3rd)
-                     // std::cout << "Correction 2-error: k: " << k << ", q: " << error_q.at(i) << ", i: " << i << std::endl;
+                  // std::cout << "Correction 2-error: k: " << k << ", q: " << error_q.at(i) << ", i: " << i << std::endl;
                   const auto [pos_2nd, corrector_indices] = it.operator*().second;
                   const int idx_1 = k;
                   const int idx_2 = pos_2nd + k;
-                  const int channel_value_1 = el.at(idx_1);
-                  const int channel_value_2 = el.at(idx_2);
-                  const auto [corrector_idx_1, corrector_idx_2] = corrector_indices;
-                  el[idx_1] = code.mGf.Sub(channel_value_1 - 1, corrector_idx_1) + 1;
-                  el[idx_2] = code.mGf.Sub(channel_value_2 - 1, corrector_idx_2) + 1;
+                  if (idx_2 < el.size()) {
+                     const int channel_value_1 = el.at(idx_1);
+                     const int channel_value_2 = el.at(idx_2);
+                     const auto [corrector_idx_1, corrector_idx_2] = corrector_indices;
+                     el[idx_1] = code.mGf.Sub(channel_value_1 - 1, corrector_idx_1) + 1;
+                     el[idx_2] = code.mGf.Sub(channel_value_2 - 1, corrector_idx_2) + 1;
+                  }
                   auto c = rsexh::CalculateSyndrome(el, code.R, code.mGf);
                   is_ok = true;
                   for (const auto& el_c: c) {
@@ -374,8 +378,8 @@ double measure_ber(double ber, int factor) {
 
 int main( int argc, char* argv[] )
 {
-   const double ber = 0.002; // output BER x95 less input BER when RS corrects only 1-errors: no CRC
-   // output BER x500 less input BER when RS corrects both 1- and 2-errors: with additional CRC.
+   const double ber = 0.002;
+   // The output BER 1100 times less the input BER 0,002 when RS corrects both 1- and 2-errors with additional CRC.
    double output_ber = 0;
    for (double counter = 1;; counter++) {
       double prev_ber = output_ber;
@@ -386,7 +390,7 @@ int main( int argc, char* argv[] )
       output_ber += (out_ber - output_ber) / counter;
       const double rel_error = output_ber != 0. ? std::abs(prev_ber - output_ber) / output_ber : 1.;
       std::cout << "current output BER: " << output_ber << ", counter: " << counter << std::endl;
-      if (rel_error < 1.e-3) {
+      if (rel_error < 1.e-4) {
          break;
       }
    }
