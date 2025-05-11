@@ -167,38 +167,22 @@ double measure_ber(double ber, int factor) {
          v.back().push_back(crc);
       }
       // Channel
-      // std::vector<int> error_q; // Кратности ошибки.
-      // std::vector<std::vector<int>> errors; // Ошибки.
+      std::vector<int> error_q; // Кратности ошибки.
       for (int pos1 = 0; auto& el : v) {
-         // error_q.push_back(0);
-         // errors.push_back({});
+         error_q.push_back(0);
          for (int pos2 = 0; auto& el2 : el) {
-            // if (pos2 == (el.size() - 1)) {
-            //    break;
-            // }
-            // errors.back().push_back(0);
-            // bool was_error = false;
+            bool was_error = false;
             for (int i=0; i<4; ++i) {
                const bool error = roll_error(ber);
-               // was_error |= error;
-               // if (error)
-                  // std::cout << "Make error: pos1: " << pos1 << ", pos2: " << pos2 << '\n';
+               was_error |= error;
                el2 ^= (static_cast<int>(error) << i); // Полубайт.
-               // errors.back().back() ^= (static_cast<int>(error) << i);
             }
-            // error_q.back() += was_error;
+            error_q.back() += was_error;
             pos2++;
          }
          pos1++;
       }
-      // bool was_3rd = false;
-      // int sum_q = 0;
-      // for (auto q : error_q) {
-      //    was_3rd |= q >= 2;
-      //    sum_q += q;
-      // }
       // Decode
-      // std::cout << "Decode RS\n";
       for (int i = 0; auto& el : v) {
          a_received[i].mStatus = hamming::SymbolStatus::Uninitialized;
          // std::cout << "Calculate cyndrome 1\n";
@@ -210,14 +194,6 @@ double measure_ber(double ber, int factor) {
          if (!is_ok) {
             // std::cout << "First cyndrome check: " << "Failure" << '\n';
             if (auto it = code.mLut_1_errors.find(c); it != code.mLut_1_errors.end()) {
-               // if (was_3rd)
-                  // std::cout << "Correction 1-error: q: " << error_q.at(i) << ", i: " << i << std::endl;
-               // if (error_q.at(i) > 1) {
-                  // std::cout << "Strange error: ";
-                     // for (auto e : errors.at(i))
-                        // std::cout << e << ", ";
-                  // std::cout << std::endl;
-               // }
                const auto [pos, corrector_idx] = it.operator*().second;
                const int channel_value = el.at(pos);
                el[pos] = code.mGf.Sub(channel_value - 1, corrector_idx) + 1; // idx = value - 1 => value = idx + 1.
@@ -226,22 +202,16 @@ double measure_ber(double ber, int factor) {
                for (const auto& el_c: c) {
                   is_ok &= el_c == 0;
                }
-               // if (was_3rd)
-                  // std::cout << "Is ok: " << is_ok << std::endl;
                // std::cout << "Second cyndrome check: " << (is_ok ? "Ok" : "Failure") << '\n';
             }
          }
          if (is_ok) {
-            // if (was_3rd && error_q.at(i))
-               // std::cout << "1 Normal: q: " << error_q.at(i) << ", i: " << i << std::endl;
             auto a_dec = rsexh::Decode(el, code.R, code.mGf);
             for (int j=0; j<a_dec.size(); ++j) {
                a_received[i].mSymbol[j] = a_dec.at(j);
             }
             a_received[i].mStatus = hamming::SymbolStatus::Normal;
          } else {
-            // if (was_3rd)
-               // std::cout << "1 Erasured: q: " << error_q.at(i) << ", i: " << i << std::endl;
             for (int j=0; j<code.M2; ++j) {
                a_received[i].mSymbol[j] = -1;
             }
@@ -263,14 +233,8 @@ double measure_ber(double ber, int factor) {
          if (!is_ok) {
             // std::cout << "First cyndrome check: " << "Failure" << '\n';
             // 2-кратные ошибки.
-            // int crc_before = 0;
-            // for (auto el2 : el) {
-            //    crc_before ^= el2;
-            // }
             for (int k = 0; k < code.N - 1; k++) {
                if (auto it = code.mLut_2_errors.find(c); it != code.mLut_2_errors.end()) {
-                  // if (was_3rd)
-                  // std::cout << "Correction 2-error: k: " << k << ", q: " << error_q.at(i) << ", i: " << i << std::endl;
                   const auto [pos_2nd, corrector_indices] = it.operator*().second;
                   const int idx_1 = k;
                   const int idx_2 = pos_2nd + k;
@@ -292,28 +256,21 @@ double measure_ber(double ber, int factor) {
                   }
                   // std::cout << "crc after 2-correction: " << crc << ", crc before: " << crc_before << std::endl;
                   if (crc != 0) { // Отменяем коррекцию ошибки большой кратности, если контрольная сумма не сошлась.
-                     // if (was_3rd)
-                     // std::cout << "Discard correction" << std::endl;
+                     // std::cout << "Discard correction, " << "q: " << error_q.at(i) << std::endl;
                      is_ok = false;
                   }
-                  // if (was_3rd)
-                     // std::cout << "Is ok: " << is_ok << std::endl;
                   break;
                }
                rsexh::ShiftLeftSyndrome<code.p, code.q>(c); // Сдвиг - имеется ввиду сдвиг соответствующего вектора ошибки.
             }
          }
          if (is_ok) {
-            // if (was_3rd && error_q.at(i))
-               // std::cout << "2 Normal: q: " << error_q.at(i) << ", i: " << i << std::endl;
             auto a_dec = rsexh::Decode(el, code.R, code.mGf);
             for (int j=0; j<a_dec.size(); ++j) {
                a_received[i].mSymbol[j] = a_dec.at(j);
             }
             a_received[i].mStatus = hamming::SymbolStatus::Normal;
          } else {
-            // if (was_3rd)
-               // std::cout << "2 Erasured: q: " << error_q.at(i) << ", i: " << i << std::endl;
             for (int j=0; j<code.M2; ++j) {
                a_received[i].mSymbol[j] = -1;
             }
@@ -324,7 +281,7 @@ double measure_ber(double ber, int factor) {
       // std::cout << "Decode Hamming: " << a_received.size() << std::endl;
       int erased;
       const bool is_ok_hamming = code.mHammingCode.Decode(a_received, erased);
-      // if (was_3rd && erased) {
+      // if (erased) {
       //    std::cout << (is_ok_hamming ? "Ok" : "Failure") << ", were erased: " << erased << std::endl;
       // }
       // std::cout << "Check input equality\n";
@@ -332,24 +289,6 @@ double measure_ber(double ber, int factor) {
       for (int i = 0; i < code.mHammingCode.K; ++i) {
          is_equal &= a.at(i) == a_received.at(i);
       }
-      // if (sum_q && !is_equal) {
-      //    std::cout << "Errors q: ";
-      //    for (auto q : error_q) {
-      //       std::cout << q << ", ";
-      //    }
-      //    std::cout << std::endl;
-      //    std::cout << "Errors: ";
-      //    for (auto er : errors) {
-      //       std::cout << "(";
-      //       for (auto e : er)
-      //          std::cout << e << ", ";
-      //       std::cout << "); ";
-      //    }
-      //    std::cout << std::endl;
-      //    std::cout << "Equal: " << is_equal << std::endl;
-      //    assert(1==0);
-      //    return -1.;
-      // }
       if (!is_equal) {
          for (int i = 0; i < code.mHammingCode.K; ++i) {
             if (a_received.at(i).mStatus != hamming::SymbolStatus::Normal) {

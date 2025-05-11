@@ -215,7 +215,7 @@ namespace rsexh {
         static constexpr int p = 2;
         static constexpr int q = 4; // N = p^q - 1 - длина кода Рида-Соломона.
         static constexpr int N = utils::power<int>(p, q) - 1;
-        static constexpr int R = 4; // Количество проверочных символов кода Рида-Соломона.
+        static constexpr int R = 5; // Количество проверочных символов кода Рида-Соломона.
         static constexpr int K = N - R;
         // Кодовое расстояние.
         static constexpr int D = R + 1;
@@ -230,7 +230,7 @@ namespace rsexh {
         // Таблица соответствия синдромов и им соответствующих двухкратных ошибок (2-ошибок).
         std::unordered_map< std::vector< int >, std::pair<int, std::pair<int, int>>, gf::KeyHasher2 > mLut_2_errors;
         static constexpr int R2 = 6;  // Количество проверочных символов расширенного кода Хэмминга.
-        static constexpr int M2 = 11; // Количество внутренних символов расширенного кода Хэмминга.
+        static constexpr int M2 = 10; // Количество внутренних символов расширенного кода Хэмминга.
         hamming::HammingExtended< R2, M2, int > mHammingCode;
 
         /**
