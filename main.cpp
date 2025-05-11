@@ -160,24 +160,19 @@ double measure_ber(double ber, int factor) {
          for (int i = 0; i < code.K; ++i)
             a_rs[i] = el.mSymbol[i];
          v.push_back(rsexh::Encode(a_rs, code.mGf));
-         int crc = 0;
-         for (auto el : v.back()) {
-            crc ^= el;
-         }
-         v.back().push_back(crc);
       }
       // Channel
-      std::vector<int> error_q; // Кратности ошибки.
+      // std::vector<int> error_q; // Кратности ошибки.
       for (int pos1 = 0; auto& el : v) {
-         error_q.push_back(0);
+         // error_q.push_back(0);
          for (int pos2 = 0; auto& el2 : el) {
             bool was_error = false;
             for (int i=0; i<4; ++i) {
                const bool error = roll_error(ber);
-               was_error |= error;
+               // was_error |= error;
                el2 ^= (static_cast<int>(error) << i); // Полубайт.
             }
-            error_q.back() += was_error;
+            // error_q.back() += was_error;
             pos2++;
          }
          pos1++;
@@ -250,15 +245,6 @@ double measure_ber(double ber, int factor) {
                   for (const auto& el_c: c) {
                      is_ok &= el_c == 0;
                   }
-                  int crc = 0;
-                  for (auto el2 : el) {
-                     crc ^= el2;
-                  }
-                  // std::cout << "crc after 2-correction: " << crc << ", crc before: " << crc_before << std::endl;
-                  if (crc != 0) { // Отменяем коррекцию ошибки большой кратности, если контрольная сумма не сошлась.
-                     // std::cout << "Discard correction, " << "q: " << error_q.at(i) << std::endl;
-                     is_ok = false;
-                  }
                   break;
                }
                rsexh::ShiftLeftSyndrome<code.p, code.q>(c); // Сдвиг - имеется ввиду сдвиг соответствующего вектора ошибки.
@@ -282,7 +268,7 @@ double measure_ber(double ber, int factor) {
       int erased;
       const bool is_ok_hamming = code.mHammingCode.Decode(a_received, erased);
       // if (erased) {
-      //    std::cout << (is_ok_hamming ? "Ok" : "Failure") << ", were erased: " << erased << std::endl;
+         // std::cout << (is_ok_hamming ? "Ok" : "Failure") << ", were erased: " << erased << std::endl;
       // }
       // std::cout << "Check input equality\n";
       bool is_equal = true;
@@ -317,8 +303,8 @@ double measure_ber(double ber, int factor) {
 
 int main( int argc, char* argv[] )
 {
-   const double ber = 0.002;
-   // The output BER 1100 times less the input BER 0,002 when RS corrects both 1- and 2-errors with additional CRC.
+   // Channel BER = 0.01 : decoder BER = 0.00037, RS (15,10,6) in mode 1-error and 2-error correction.
+   const double ber = 0.01;
    double output_ber = 0;
    for (double counter = 1;; counter++) {
       double prev_ber = output_ber;
