@@ -192,12 +192,7 @@ double measure_ber(double ber, int factor) {
                const auto [pos, corrector_idx] = it.operator*().second;
                const int channel_value = el.at(pos);
                el[pos] = code.mGf.Sub(channel_value - 1, corrector_idx) + 1; // idx = value - 1 => value = idx + 1.
-               auto c = rsexh::CalculateSyndrome(el, code.R, code.mGf);
                is_ok = true;
-               for (const auto& el_c: c) {
-                  is_ok &= el_c == 0;
-               }
-               // std::cout << "Second cyndrome check: " << (is_ok ? "Ok" : "Failure") << '\n';
             }
          }
          if (is_ok) {
@@ -240,11 +235,7 @@ double measure_ber(double ber, int factor) {
                      el[idx_1] = code.mGf.Sub(channel_value_1 - 1, corrector_idx_1) + 1;
                      el[idx_2] = code.mGf.Sub(channel_value_2 - 1, corrector_idx_2) + 1;
                   }
-                  auto c = rsexh::CalculateSyndrome(el, code.R, code.mGf);
                   is_ok = true;
-                  for (const auto& el_c: c) {
-                     is_ok &= el_c == 0;
-                  }
                   break;
                }
                rsexh::ShiftLeftSyndrome<code.p, code.q>(c); // Сдвиг - имеется ввиду сдвиг соответствующего вектора ошибки.
@@ -303,8 +294,18 @@ double measure_ber(double ber, int factor) {
 
 int main( int argc, char* argv[] )
 {
-   // Channel BER = 0.01 : decoder BER = 0.00037, RS (15,10,6) in mode 1-error and 2-error correction.
-   const double ber = 0.01;
+   // Memory consumption: ~3MB if integer type size is 4 bytes.
+   // Channel BER : decoder BER, RS (15,10,6) in mode 1-error and 2-error correction.
+   // 0.002 : 1.0e-7
+   // 0.005 : 2.3e-6
+   // 0.010 : 0.00023
+   // 0.015 : 0.0047
+   // 0.020 : 0.026
+   // 0.025 : 0.070
+   // 0.030 : 0.117
+   // 0.100 : 0.467
+   // 0.200 : 0.5
+   const double ber = 0.002;
    double output_ber = 0;
    for (double counter = 1;; counter++) {
       double prev_ber = output_ber;
@@ -314,12 +315,12 @@ int main( int argc, char* argv[] )
       }
       output_ber += (out_ber - output_ber) / counter;
       const double rel_error = output_ber != 0. ? std::abs(prev_ber - output_ber) / output_ber : 1.;
-      std::cout << "current output BER: " << output_ber << ", counter: " << counter << std::endl;
-      if (rel_error < 1.e-4) {
+      std::cout << "decoder BER: " << output_ber << ", counter: " << counter << ", channel BER: " << ber << std::endl;
+      if (out_ber > 0 && rel_error < 1.e-4) {
          break;
       }
    }
-   std::cout << "Output BER: " << output_ber << std::endl;
+   std::cout << "Decoder BER: " << output_ber << std::endl;
 
    // test_rs();
    

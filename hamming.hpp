@@ -344,8 +344,6 @@
              ids.push_back( i );
        }
        erased = ids.size();
-       if( erased >= D )
-          return false;
        // Выбираем часть проверочной матрицы - подматрицу.
        Matrix< int > selected;
        for( int j = 0; j < R; ++j )
