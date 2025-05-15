@@ -230,7 +230,7 @@ namespace rsexh {
         // Таблица соответствия синдромов и им соответствующих двухкратных ошибок (2-ошибок).
         std::unordered_map< std::vector< int >, std::pair<int, std::pair<int, int>>, gf::KeyHasher2 > mLut_2_errors;
         static constexpr int R2 = 6;  // Количество проверочных символов расширенного кода Хэмминга.
-        static constexpr int M2 = 10; // Количество внутренних символов расширенного кода Хэмминга.
+        static constexpr int M2 = K; // Количество внутренних символов расширенного кода Хэмминга.
         hamming::HammingExtended< R2, M2, int > mHammingCode;
 
         /**

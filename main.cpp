@@ -305,7 +305,7 @@ int main( int argc, char* argv[] )
    // 0.030 : 0.117
    // 0.100 : 0.467
    // 0.200 : 0.5
-   const double ber = 0.002;
+   const double ber = 0.015;
    double output_ber = 0;
    for (double counter = 1;; counter++) {
       double prev_ber = output_ber;
