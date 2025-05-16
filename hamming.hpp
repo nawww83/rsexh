@@ -247,36 +247,39 @@
      * Длина кода. Код двоичный в плане кодового символа, однако, кодовый символ - векторный.
      * Используется алгебра побитового XOR, которой нет разницы сколько внутренних символов (элементов вектора).
      */
-    static constexpr auto N = power2<int>( R - 1 );
+    int N = power2<int>( R - 1 );
     
     /**
      * Количество информационных кодовых символов.
      */
-    static constexpr int K = N - R;
-    
-    /**
-     * Кодовое расстояние.
-     */
-    static constexpr int D = 4;
+    int K = N - R;
  
     /**
-     * Конструктор. Заполняется проверочная матрица кода.
+     * Конструктор. Заполняется проверочная матрица кода, если не передана внешняя матрица.
+     * H - Внешняя несистематическая проверочная матрица. Для задания произвольного кода.
      */
-    explicit HammingExtended()
+    explicit HammingExtended(const Matrix<int> H = {})
     {
-       mH.clear();
-       for( int i = 0; i < R; ++i )
-          mH.emplace_back( N, i == 0 );
-       int deg = N / 2;
-       for( int i = 1; i < R; ++i )
-       {
-          for( int j = 0; j < N; ++j )
-             mH[ i ][ j ] = ( ( ( j + 1 ) / deg ) % 2 ) == 1;
-          deg /= 2;
-       }
-       bool is_ok;
-       std::tie(mHsys, mSwaps) = MakeParityMatrixSystematic( mH, is_ok );
-       assert(is_ok);
+      if (H.empty()) {
+         mH.clear();
+         for( int i = 0; i < R; ++i )
+            mH.emplace_back( N, i == 0 );
+         int deg = N / 2;
+         for( int i = 1; i < R; ++i )
+         {
+            for( int j = 0; j < N; ++j )
+               mH[ i ][ j ] = ( ( ( j + 1 ) / deg ) % 2 ) == 1;
+            deg /= 2;
+         }
+      } else {
+         assert(H.size() == R);
+         N = H.at(0).size();
+         K = N - R;
+         mH = H;
+      }
+      bool is_ok;
+      std::tie(mHsys, mSwaps) = MakeParityMatrixSystematic( mH, is_ok );
+      assert(is_ok);
     }
  
     /**
@@ -371,9 +374,7 @@
                 weight += row[ k ] != 0;
              }
              if( weight < weight_original )
-             {
                 selected_m[ i ] = row;
-             }
           }
        }
        // Ищем базис - строки с единственной единицей ("хорошие" строки).
@@ -382,13 +383,9 @@
        {
           int weight = 0;
           for( int k = 0; k < erased; ++k )
-          {
              weight += selected_m.at( j ).at( k ) != 0;
-          }
           if( weight == 1 )
-          {
              good_rows.push_back( j );
-          }
        }
        assert( good_rows.size() == erased );
        // Формируем строки из исходной матрицы в соответствие с индексами "хороших" строк.
@@ -398,10 +395,6 @@
        // Делаем подматрицу систематической для прямого решения СЛАУ - восстановления стертых символов.
        bool is_ok;
        std::tie(selected, std::ignore) = MakeParityMatrixSystematic( selected, is_ok, ids );
-       const bool matrix_reduced = selected.size() < erased;
-       const bool matrix_expanded = selected.size() > erased;
-       assert(!matrix_reduced && "Matrix reduced!");
-       assert(!matrix_expanded && "Matrix expanded!");
        // Восстанавливаем стертые символы.
        for( int i = 0; i < std::min(selected.size(), ids.size()); ++i )
        {
@@ -423,9 +416,8 @@
              std::swap( v[ a ], v[ b ] );
           }
        }
-       while (v.size() > K) {
+       while (v.size() > K)
           v.pop_back();
-       }
        return true;
     }
  

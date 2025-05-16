@@ -131,6 +131,7 @@ void test_rs_correct_2(int position_1, int position_2, int val_1, int val_2, int
 
 double measure_ber(double ber, int factor) {
    static rsexh::RsExh code;
+   code.mHammingCode.SwitchToSystematic(false);
    // std::cout << "N: " << code.N << '\n';
    hamming::CodeWord<int, code.M2> a(code.mHammingCode.K);
    hamming::CodeWord<int, code.M2> a_received(code.mHammingCode.N);
@@ -294,8 +295,7 @@ double measure_ber(double ber, int factor) {
 
 int main( int argc, char* argv[] )
 {
-   // Memory consumption: ~3MB if integer type size is 4 bytes.
-   // Channel BER : decoder BER, RS (15,10,6) in mode 1-error and 2-error correction.
+   // Channel BER : decoder BER, RS (15,10,6) in mode 1-error and 2-error correction. Extended Hamming code (32, 26) with distance 4.
    // 0.002 : 1.0e-7
    // 0.005 : 2.3e-6
    // 0.010 : 0.00023
@@ -305,6 +305,11 @@ int main( int argc, char* argv[] )
    // 0.030 : 0.117
    // 0.100 : 0.467
    // 0.200 : 0.5
+   
+   // Set the Golay code (23, 12) with code distance 7. Approx., BER 10 times less.
+   // 0.010 : 1.7e-5
+   // 0.015 : 0.00044
+
    const double ber = 0.015;
    double output_ber = 0;
    for (double counter = 1;; counter++) {
