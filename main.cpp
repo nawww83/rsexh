@@ -295,7 +295,11 @@ double measure_ber(double ber, int factor) {
 
 int main( int argc, char* argv[] )
 {
-   // Channel BER : decoder BER, RS (15,10,6) in mode 1-error and 2-error correction. Extended Hamming code (32, 26) with distance 4.
+   // Channel BER : Decoder BER
+   
+   // Case A.
+   // RS (15, 10, 6) in mode 1- and 2-error correction.
+   // Default Extended Hamming code (32, 26) with the code distance 4. Total R = 46%.
    // 0.002 : 1.0e-7
    // 0.005 : 2.3e-6
    // 0.010 : 0.00023
@@ -306,11 +310,17 @@ int main( int argc, char* argv[] )
    // 0.100 : 0.467
    // 0.200 : 0.5
    
-   // Set the Golay code (23, 12) with code distance 7. Approx., BER 10 times less.
+   // Case B.
+   // RS (15, 9, 7) in mode 1- and 2-error correction.
+   // Set the Golay code (23, 12) with the code distance 7. Total R = 69%.
+   // 0.005 : <1.e-7
    // 0.010 : 1.7e-5
    // 0.015 : 0.00044
+   // 0.020 : 0.0040
+   // 0.025 : 0.020
+   // 0.030 : 0.056
 
-   const double ber = 0.015;
+   const double ber = 0.005;
    double output_ber = 0;
    for (double counter = 1;; counter++) {
       double prev_ber = output_ber;
