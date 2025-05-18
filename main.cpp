@@ -313,7 +313,7 @@ int main( int argc, char* argv[] )
    // Case B.
    // RS (15, 9, 7) in mode 1- and 2-error correction.
    // Set the Golay code (23, 12) with the code distance 7. Total R = 69%.
-   // 0.005 : <1.e-7
+   // 0.005 : 1.0e-7
    // 0.010 : 1.7e-5
    // 0.015 : 0.00044
    // 0.020 : 0.0040
