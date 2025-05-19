@@ -7,6 +7,7 @@
  #include <iostream> // std::cout
  #include <cassert>  // assert
  #include <utility>  // std::pair
+ #include <set>      // std::set
  #include <tuple>    // std::tie, std::ignore
  #include <array>    // std::array
  #include <vector>   // std::vector
