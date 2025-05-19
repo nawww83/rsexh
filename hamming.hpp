@@ -56,7 +56,7 @@
     /**
      * Внутренние символы.
      */
-    std::array< T, N > mSymbol;
+    std::array< T, N > mSymbol{};
     
     /**
      * Оператор сложения. В данном случае побитовый XOR.
@@ -176,7 +176,7 @@
     }
     return std::make_pair(true, std::make_pair(column, idx));
  }
- 
+
  /**
   * Формирует систематическую проверочную матрицу по несистематической.
   * @param columns Столбцы, которые будут базисными (по умочанию - справа).
@@ -227,7 +227,7 @@
     }
     return std::make_pair(result, swaps);
  }
- 
+
  template <typename T>
  inline constexpr T power2( int x )
  {
@@ -279,6 +279,7 @@
       }
       bool is_ok;
       std::tie(mHsys, mSwaps) = MakeParityMatrixSystematic( mH, is_ok );
+      // show_matrix(mHsys, "Systematic:");
       assert(is_ok);
     }
  
@@ -318,7 +319,7 @@
     CodeWord< T, M > CalcSyndrome( const CodeWord< T, M >& v )
     {
        CodeWord< T, M > result;
-       auto& parity_check = mIsSystematic ? mHsys : mH;
+       const auto& parity_check = mIsSystematic ? mHsys : mH;
        for( int i = 0; i < R; ++i )
        {
           CodeElement< T, M > element{ .mStatus = SymbolStatus::Normal, .mSymbol = {} };
@@ -338,7 +339,12 @@
     bool Decode( CodeWord< T, M >& v, int& erased )
     {
        assert(v.size() == N && "Input size is wrong");
-       auto& parity_check = mIsSystematic ? mHsys : mH;
+       const auto& parity_check = mHsys;
+       if (!mIsSystematic) {
+          for (const auto& [a, b] : mSwaps) {
+             std::swap( v[ a ], v[ b ] );
+          }
+       }
        // Определяем индексы стертых символов.
        std::vector< int > ids;
        for( int i = 0; i < N; ++i )
@@ -355,10 +361,63 @@
           for( int i = 0; auto idx : ids )
              selected[ j ][ i++ ] = parity_check.at( j ).at( idx );
        }
+      //  show_matrix(selected, "Selected columns:");
        // Упрощаем выбранную матрицу: максимально минимизируем количество единиц в каждой строке.
        // O(R^2).
        Matrix< int > selected_m = selected;
+       selected = parity_check;
        Vector< int > row( erased, 0 );
+       Vector< int > weights( R, -1 );
+       // Метод 1. Дубовый. Раундовый.
+      //  int counter = 0;
+      //  for (;;) { // Раунды: итерации.
+      //    counter++;
+      //    bool all_minimal_weights = true;
+      //    for( int i = 0; i < R; ++i )
+      //    {
+      //       int w = 0;
+      //       for( int k = 0; k < erased; ++k )
+      //       {
+      //          w += selected_m.at( i ).at( k ) != 0; // Вес оригинального слова.
+      //       }
+      //       if (weights.at(i) == -1) {
+      //          weights[i] = w;
+      //       }
+      //       for( int j = 0; j < R; ++j )
+      //       {
+      //          if( j == i )
+      //             continue;
+      //          int weight = 0;
+      //          int bad_condition = 0;
+      //          for( int k = 0; k < erased; ++k )
+      //          {
+      //             if ( selected_m.at( i ).at( k ) == 0 && selected_m.at( j ).at( k )) {
+      //                bad_condition = 1; // Ноль в оригинале станет ненулевым элементом.
+      //                break;
+      //             }
+      //             row[ k ] = selected_m.at( i ).at( k ) ^ selected_m.at( j ).at( k );
+      //             weight += row[ k ] != 0;
+      //          }
+      //          if( weight < weights.at(i) && !bad_condition ) {
+      //             selected_m[ i ] = row;
+      //             weights[i] = weight;
+      //             for( int k = 0; k < N; ++k )
+      //             {
+      //                selected[ i ][ k ] ^= selected.at( j ).at( k );
+      //             }
+      //          }
+      //       }
+      //    }
+      //    for (auto w : weights) {
+      //       all_minimal_weights &= (w <= 1);
+      //    }
+      //    if (all_minimal_weights || counter > erased) {
+      //       break;
+      //    }
+      //  }
+      //  show_matrix(selected_m, "Selected simplified:");
+      //  std::cout << "counter: " << counter << std::endl;
+       // Метод 2. Однопроходной (безраундовый).
        for( int i = 0; i < R; ++i )
        {
           for( int j = 0; j < R; ++j )
@@ -373,52 +432,68 @@
                 weight_original += selected_m.at( i ).at( k ) != 0;
                 weight += row[ k ] != 0;
              }
-             if( weight < weight_original )
+             if( weight < weight_original ) {
                 selected_m[ i ] = row;
+                for( int k = 0; k < N; ++k )
+               {
+                  selected[ i ][ k ] ^= selected.at( j ).at( k );
+               }
+             }
           }
        }
+      //  show_matrix(selected_m, "Selected simplified:");
        // Ищем базис - строки с единственной единицей ("хорошие" строки).
        std::vector< int > good_rows;
+       std::set<std::vector<int>> uniques;
        for( int j = 0; j < R; ++j )
        {
+         if (good_rows.size() == erased)
+            break;
           int weight = 0;
           for( int k = 0; k < erased; ++k )
              weight += selected_m.at( j ).at( k ) != 0;
-          if( weight == 1 )
+          if( weight == 1 && !uniques.contains(selected_m.at( j )) ) {
              good_rows.push_back( j );
+             uniques.insert(selected_m.at( j ));
+          }
        }
-       assert( good_rows.size() == erased );
-       // Формируем строки из исходной матрицы в соответствие с индексами "хороших" строк.
-       selected.clear();
-       for( auto row : good_rows )
-          selected.push_back( parity_check.at( row ) );
-       // Делаем подматрицу систематической для прямого решения СЛАУ - восстановления стертых символов.
-       bool is_ok;
-       std::tie(selected, std::ignore) = MakeParityMatrixSystematic( selected, is_ok, ids );
+      //  show_matrix(selected, "Selected 1:");
        // Восстанавливаем стертые символы.
-       for( int i = 0; i < std::min(selected.size(), ids.size()); ++i )
+       for( const auto row : good_rows )
        {
          // std::cout << "i: " << i << ", M: " << M << ", v size: " << v.size() << std::endl;
           CodeElement< T, M > recovered{ .mStatus = SymbolStatus::Normal, .mSymbol = {} };
-          const int idx = ids.at( i );
+          int where_unit = -1;
+            for (int k = 0; const auto el : selected_m.at( row )) {
+               if (el) {
+                  where_unit = k;
+                  break;
+               }
+               k++;
+            }
           for( int k = 0; k < N; ++k )
           {
-            // std::cout << "k: " << k << ", idx: " << idx << ", selected size: " << selected.size() << ", erased: " << erased << std::endl;
-             if( k == idx )
+             if( k == ids.at(where_unit) )
                 continue;
-             if( selected.at( i ).at( k ) != 0 )
+             if( selected.at( row ).at( k ) != 0 ) {
+               //  std::cout << "k: " << k << ", idx: " << idx << ", selected size: " << selected.size() << ", erased: " << erased << std::endl;
+                assert(v.at(k).mStatus == SymbolStatus::Normal);
                 recovered = recovered + v.at( k );
+             }
           }
-          v[ idx ] = recovered;
-       }
-       if (!mIsSystematic) {
-          for (const auto& [a, b] : mSwaps) {
-             std::swap( v[ a ], v[ b ] );
-          }
+         //  std::cout << "idx: " << idx << ", erased: " << erased << ", good rows: " << good_rows.size() << std::endl;
+          v[ ids.at(where_unit) ] = recovered;
        }
        while (v.size() > K)
           v.pop_back();
        return true;
+    }
+
+    /**
+     * 
+     */
+    auto getSwaps() const {
+      return mSwaps;
     }
  
     /**
@@ -447,13 +522,13 @@
  };
  
  template <typename T, int M>
- inline void show_codeword(const CodeWord<T, M>& cword, const auto& code, const std::string& title) {
+ inline void show_codeword(const CodeWord<T, M>& cword, int K, const std::string& title) {
     std::cout << title << '\n';
     for (int k = 0; const auto& el1 : cword) {
        for (const auto& el2 : el1.mSymbol)
           std::cout << int(el2) << ", ";
        std::cout << '\n';
-       if (k == (code.K - 1))
+       if (k == (K - 1))
           std::cout << "----------\n";
        k++;
     }

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <random>
 #include <cassert>
+#include <set>
 #include "rsexh.hpp"
 
 static auto const seed = std::random_device{}();
@@ -18,6 +19,119 @@ auto roll_error = [urbg = std::mt19937{seed},
    const uint threshold = error_probability * uint(-1);
    return error_probability == 0 ? false : distr(urbg) <= threshold;
 };
+
+void test_ex_hamming_code(bool is_systematic) {
+   std::cout << "Test Extended Hamming (default) code: " << (is_systematic ? "systematic" : "nonsystematic") << std::endl;;
+   static constexpr int R2 = 6; // Количество проверочных символов внешнего кода.
+   static constexpr int M2 = 9;  // Количество внутренних символов внешнего кода.
+   static hamming::HammingExtended< R2, M2, int > mHammingCode;
+   std::vector<std::set<int>> test_erasures = {{2, 5, 20}, {3, 7, 17}, {2, 3, 14}, {11, 14}, {1, 2, 9, 12}};
+   mHammingCode.SwitchToSystematic(is_systematic);
+   hamming::CodeWord<int, M2> a(mHammingCode.K);
+   for (int erasure_round = 0; const auto& erasures : test_erasures) {
+      std::cout << " ... round: " << erasure_round << std::endl;
+      erasure_round++;
+      // Source
+      for (auto& el : a) {
+         el.mStatus = hamming::SymbolStatus::Normal;
+         for (auto& symbol : el.mSymbol)
+            symbol = roll_uint() & 15; // Полубайты.
+            // symbol = 0; // Полубайты.
+      }
+      // Hamming encode
+      // std::cout << "Hamming encode\n";
+      auto s_h = mHammingCode.Encode(a);
+      // hamming::show_codeword(s_h, mHammingCode.K, "Channel input v: ");
+      for (int i = 0; auto& el : s_h) {
+         if (erasures.contains(i)) {
+            el.mStatus = hamming::SymbolStatus::Erased;
+            for (auto& s : el.mSymbol)
+               s = -1;
+         }
+         ++i;
+      }
+      // hamming::show_codeword(s_h, mHammingCode.K, "Channel output v: ");
+      int erased;
+      const bool is_ok_hamming = mHammingCode.Decode(s_h, erased);
+      bool is_equal = true;
+      for (int i = 0; i < mHammingCode.K; ++i) {
+         is_equal &= a.at(i) == s_h.at(i);
+      }
+      if (!is_equal) {
+         std::cout << "Erased: " << erased << ", is ok hamming: " <<
+                  is_ok_hamming << std::endl;
+         std::cout << "Is equal: " << is_equal << std::endl;
+         hamming::show_codeword(a, mHammingCode.K, "Input a: ");
+         hamming::show_codeword(s_h, mHammingCode.K, "Decoded a: ");
+      }
+      std::cout << (is_equal ? "Ok." : "Failure.") << std::endl;
+      if (!is_equal)
+         break;
+   }
+}
+
+void test_golay_code(bool is_systematic) {
+   std::cout << "Test Golay code: " << (is_systematic ? "systematic" : "nonsystematic") << std::endl;
+   static constexpr int R2 = 11; // Количество проверочных символов внешнего кода.
+   static constexpr int M2 = 9;  // Количество внутренних символов внешнего кода.
+   static hamming::HammingExtended< R2, M2, int > mHammingCode{
+      rsexh::Matrix<int>{ // Код Голея, циклический. Кодовое расстояние - 7.
+            {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1}, 
+            {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0}, 
+            {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0}, 
+            {0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0}, 
+            {0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0}, 
+            {0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0}, 
+            {0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0}, 
+            {0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0}, 
+            {0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0}, 
+            {0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 
+            {1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+      }
+   };
+   std::vector<std::set<int>> test_erasures = {{2, 5, 20}, {1, 6, 9, 12}, {3, 7, 17}, {2, 3, 14}, {0, 4, 13, 15, 16}, {10, 11, 16, 17}, {4, 9, 10, 11, 14}};
+   mHammingCode.SwitchToSystematic(is_systematic);
+   hamming::CodeWord<int, M2> a(mHammingCode.K);
+   for (int erasure_round = 0; const auto& erasures : test_erasures) {
+      std::cout << " ... round: " << erasure_round << std::endl;
+      erasure_round++;
+      // Source
+      for (auto& el : a) {
+         el.mStatus = hamming::SymbolStatus::Normal;
+         for (auto& symbol : el.mSymbol)
+            symbol = roll_uint() & 15; // Полубайты.
+            // symbol = 0; // Полубайты.
+      }
+      // Encode
+      auto s_h = mHammingCode.Encode(a);
+      // hamming::show_codeword(s_h, mHammingCode.K, "Channel input v: ");
+      for (int i = 0; auto& el : s_h) {
+         if (erasures.contains(i)) {
+            el.mStatus = hamming::SymbolStatus::Erased;
+            for (auto& s : el.mSymbol)
+               s = -1;
+         }
+         ++i;
+      }
+      // hamming::show_codeword(s_h, mHammingCode.K, "Channel output v: ");
+      int erased;
+      const bool is_ok_hamming = mHammingCode.Decode(s_h, erased);
+      bool is_equal = true;
+      for (int i = 0; i < mHammingCode.K; ++i) {
+         is_equal &= a.at(i) == s_h.at(i);
+      }
+      if (!is_equal) {
+         std::cout << "Erased: " << erased << ", is ok hamming: " <<
+                  is_ok_hamming << std::endl;
+         std::cout << "Is equal: " << is_equal << std::endl;
+         hamming::show_codeword(a, mHammingCode.K, "Input a: ");
+         hamming::show_codeword(s_h, mHammingCode.K, "Decoded a: ");
+      }
+      std::cout << (is_equal ? "Ok." : "Failure.") << std::endl;
+      if (!is_equal)
+         break;
+   }
+}
 
 void test_rs() {
    rsexh::RsExh code;
@@ -153,6 +267,7 @@ double measure_ber(double ber, int factor) {
       auto s_h = code.mHammingCode.Encode(a);
       std::vector<int> a_rs(code.K);
       std::vector<std::vector<int>> v;
+      // hamming::show_codeword(s_h, code.mHammingCode.K, "Hamming output s: ");
       // RS encode
       // std::cout << "RS encode\n";
       v.clear();
@@ -162,23 +277,26 @@ double measure_ber(double ber, int factor) {
             a_rs[i] = el.mSymbol[i];
          v.push_back(rsexh::Encode(a_rs, code.mGf));
       }
+      // rsexh::show_matrix(v, "RS outputs: ");
       // Channel
-      // std::vector<int> error_q; // Кратности ошибки.
+      std::vector<int> error_q; // Кратности ошибки.
       for (int pos1 = 0; auto& el : v) {
-         // error_q.push_back(0);
+         error_q.push_back(0);
          for (int pos2 = 0; auto& el2 : el) {
             bool was_error = false;
             for (int i=0; i<4; ++i) {
                const bool error = roll_error(ber);
-               // was_error |= error;
+               was_error |= error;
                el2 ^= (static_cast<int>(error) << i); // Полубайт.
             }
-            // error_q.back() += was_error;
+            error_q.back() += was_error;
             pos2++;
          }
          pos1++;
       }
       // Decode
+      std::vector<int> was_1_error_correction(v.size());
+      std::vector<int> was_2_error_correction(v.size());
       for (int i = 0; auto& el : v) {
          a_received[i].mStatus = hamming::SymbolStatus::Uninitialized;
          // std::cout << "Calculate cyndrome 1\n";
@@ -194,6 +312,7 @@ double measure_ber(double ber, int factor) {
                const int channel_value = el.at(pos);
                el[pos] = code.mGf.Sub(channel_value - 1, corrector_idx) + 1; // idx = value - 1 => value = idx + 1.
                is_ok = true;
+               was_1_error_correction[i] = 1;
             }
          }
          if (is_ok) {
@@ -236,6 +355,7 @@ double measure_ber(double ber, int factor) {
                      el[idx_1] = code.mGf.Sub(channel_value_1 - 1, corrector_idx_1) + 1;
                      el[idx_2] = code.mGf.Sub(channel_value_2 - 1, corrector_idx_2) + 1;
                   }
+                  was_2_error_correction[i] = 1;
                   is_ok = true;
                   break;
                }
@@ -258,9 +378,10 @@ double measure_ber(double ber, int factor) {
       }
       // std::cout << "Decode Hamming: " << a_received.size() << std::endl;
       int erased;
+      // hamming::show_codeword(a_received, code.mHammingCode.K, "Received Hamming input v: ");
       const bool is_ok_hamming = code.mHammingCode.Decode(a_received, erased);
       // if (erased) {
-         // std::cout << (is_ok_hamming ? "Ok" : "Failure") << ", were erased: " << erased << std::endl;
+      //    std::cout << (is_ok_hamming ? "Ok" : "Failure") << ", were erased: " << erased << std::endl;
       // }
       // std::cout << "Check input equality\n";
       bool is_equal = true;
@@ -268,6 +389,13 @@ double measure_ber(double ber, int factor) {
          is_equal &= a.at(i) == a_received.at(i);
       }
       if (!is_equal) {
+         std::cout << "\nFailure: erased: " << erased << ", is ok hamming: " <<
+               is_ok_hamming << std::endl;
+         rsexh::show_vector(was_1_error_correction, "1-error corrections");
+         rsexh::show_vector(was_2_error_correction, "2-error corrections");
+         rsexh::show_vector(error_q, "Channel errors (q)");
+         hamming::show_codeword(a, code.mHammingCode.K, "Input a: ");
+         hamming::show_codeword(a_received, code.mHammingCode.K, "Decoded a: ");
          for (int i = 0; i < code.mHammingCode.K; ++i) {
             if (a_received.at(i).mStatus != hamming::SymbolStatus::Normal) {
                bits_corrupted += ((code.M2*4) / 2); // Все полубайты повреждены: стерты, эквивалентная вероятность ошибки 0.5.
@@ -300,42 +428,48 @@ int main( int argc, char* argv[] )
    // Case A.
    // RS (15, 10, 6) in mode 1- and 2-error correction.
    // Default Extended Hamming code (32, 26) with the code distance 4. Total R = 46%.
-   // 0.002 : 1.0e-7
-   // 0.005 : 2.3e-6
-   // 0.010 : 0.00023
-   // 0.015 : 0.0047
-   // 0.020 : 0.026
-   // 0.025 : 0.070
-   // 0.030 : 0.117
-   // 0.100 : 0.467
-   // 0.200 : 0.5
+   // 0.002 : 
+   // 0.005 : 
+   // 0.010 : 
+   // 0.015 : 
+   // 0.020 : 
+   // 0.025 : 
+   // 0.030 : 
+   // 0.100 : 
+   // 0.200 : 
    
    // Case B.
    // RS (15, 9, 7) in mode 1- and 2-error correction.
    // Set the Golay code (23, 12) with the code distance 7. Total R = 69%.
-   // 0.005 : 1.0e-7
-   // 0.010 : 1.7e-5
-   // 0.015 : 0.00044
-   // 0.020 : 0.0040
-   // 0.025 : 0.020
-   // 0.030 : 0.056
+   // 0.005 : 
+   // 0.010 : 
+   // 0.015 : 
+   // 0.020 : 
+   // 0.025 : 
+   // 0.030 : 
 
-   const double ber = 0.005;
-   double output_ber = 0;
-   for (double counter = 1;; counter++) {
-      double prev_ber = output_ber;
-      auto out_ber = measure_ber(ber, 10000);
-      if (out_ber == -1.) {
-         return -1;
-      }
-      output_ber += (out_ber - output_ber) / counter;
-      const double rel_error = output_ber != 0. ? std::abs(prev_ber - output_ber) / output_ber : 1.;
-      std::cout << "decoder BER: " << output_ber << ", counter: " << counter << ", channel BER: " << ber << std::endl;
-      if (out_ber > 0 && rel_error < 1.e-4) {
-         break;
-      }
-   }
-   std::cout << "Decoder BER: " << output_ber << std::endl;
+   // const double ber = 0.02;
+   // double output_ber = 0;
+   // for (double counter = 1;; counter++) {
+   //    double prev_ber = output_ber;
+   //    auto out_ber = measure_ber(ber, 10000);
+   //    if (out_ber == -1.) {
+   //       return -1;
+   //    }
+   //    output_ber += (out_ber - output_ber) / counter;
+   //    const double rel_error = output_ber != 0. ? std::abs(prev_ber - output_ber) / output_ber : 1.;
+   //    std::cout << "decoder BER: " << output_ber << ", counter: " << counter << ", channel BER: " << ber << std::endl;
+   //    if (out_ber > 0 && rel_error < 1.e-4) {
+   //       break;
+   //    }
+   // }
+   // std::cout << "Decoder BER: " << output_ber << std::endl;
+   
+   test_golay_code(true);
+   test_golay_code(false);
+
+   test_ex_hamming_code(true);
+   test_ex_hamming_code(false);
 
    // test_rs();
    
