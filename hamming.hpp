@@ -325,13 +325,23 @@ void SimplifyManyOfPass(Matrix<int>& parity_check, Matrix<int>& selected) {
      * Количество информационных кодовых символов.
      */
     int K = N - R;
+
+    /**
+     * Кодовое расстояние кода. По умолчанию - расстояние для расширенного кода Хэмминга.
+     */
+    int D = 4;
  
     /**
      * Конструктор. Заполняется проверочная матрица кода, если не передана внешняя матрица.
      * H - Внешняя несистематическая проверочная матрица. Для задания произвольного кода.
      */
-    explicit HammingExtended(const Matrix<int> H = {})
+    explicit HammingExtended(const Matrix<int> H = {}, int code_distance = -1)
     {
+      assert((!H.empty() && code_distance != -1) || (H.empty() && code_distance == -1));
+      if (code_distance != -1) {
+         D = code_distance;
+      }
+      assert(D <= (R + 1));
       if (H.empty()) {
          mH.clear();
          for( int i = 0; i < R; ++i )
@@ -479,8 +489,9 @@ void SimplifyManyOfPass(Matrix<int>& parity_check, Matrix<int>& selected) {
          //  std::cout << "idx: " << idx << ", erased: " << erased << ", good rows: " << good_rows.size() << std::endl;
           v[ ids.at(where_unit) ] = recovered;
        }
-       if (good_rows.size() < erased) {
-         mWorkH = mHsys; // Неудачное восстановление стертых символов: рабочую копию обновляем исходной проверочной матрицей.
+       if (erased >= D) { // Кратность гарантированно восстанавливаемого стирания: qc < D.
+         mWorkH = mHsys; // Потенциально неудачное восстановление стертых символов: 
+         // рабочую копию обновляем исходной проверочной матрицей.
        }
        while (v.size() > K)
           v.pop_back();

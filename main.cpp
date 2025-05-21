@@ -87,7 +87,7 @@ void test_golay_code(bool is_systematic) {
             {0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0}, 
             {0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 
             {1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-      }
+      }, 7
    };
    std::vector<std::set<int>> test_erasures = {{2, 5, 20}, {1, 6, 9, 12}, {3, 7, 17}, {2, 3, 14}, {0, 4, 13, 15, 16}, 
          {10, 11, 16, 17}, {4, 9, 10, 11, 14}, {0, 1, 6, 9, 11}, {0, 2, 5, 6, 8, 10}, {1, 3, 7, 19}, {0, 8, 9, 16, 21}};
@@ -413,6 +413,7 @@ double measure_ber(double ber, int factor) {
             rsexh::show_vector(error_q, "Channel errors (q)");
             hamming::show_codeword(a, code.mHammingCode.K, "Input a: ");
             hamming::show_codeword(a_received, code.mHammingCode.K, "Decoded a: ");
+            rsexh::show_matrix(code.mHammingCode.mWorkH, "Work matrix: ");
             return -1.;
          }
          for (int i = 0; i < code.mHammingCode.K; ++i) {
@@ -483,7 +484,7 @@ int main( int argc, char* argv[] )
       }
       output_ber += (out_ber - output_ber) / counter;
       const double rel_error = output_ber != 0. ? std::abs(prev_ber - output_ber) / output_ber : 1.;
-      std::cout << "decoder BER: " << output_ber << ", counter: " << counter << ", channel BER: " << ber << std::endl;
+      std::cout << "decoder BER: " << output_ber << ", counter: " << counter << ", channel BER: " << ber << " (sample ber = " << out_ber << ")" << std::endl;
       if (out_ber > 0 && rel_error < 1.e-4) {
          break;
       }
