@@ -437,7 +437,8 @@ void SimplifyManyOfPass(Matrix<int>& parity_check, Matrix<int>& selected) {
        }
        erased = ids.size();
        // Выбираем часть проверочной матрицы - подматрицу.
-       Matrix< int > selected;
+      //  Matrix< int > selected;
+      selected.clear();
        for( int j = 0; j < R; ++j )
        {
           selected.emplace_back( erased, 0 );
@@ -533,6 +534,11 @@ void SimplifyManyOfPass(Matrix<int>& parity_check, Matrix<int>& selected) {
      * Рабочая копия проверочной матрицы (систематической).
      */
     Matrix< int > mWorkH;
+
+    /**
+     * Выборочная матрица.
+     */
+    Matrix< int > selected;
  };
  
  template <typename T, int M>

@@ -264,11 +264,11 @@ namespace rsexh {
             mLut_2_errors.clear();
             const int N = std::pow( p, q ) - 1;
             {
-                mLut_1_errors.reserve( N * (N - 1) );
+                mLut_1_errors.reserve( N * N );
                 std::vector< int > c( R ); // Синдром.
                 for( int i = 0; i < N; ++i )
                 {
-                    for( int j = 0; j < N - 1; ++j ) // Значения ошибки.
+                    for( int j = 0; j < N; ++j ) // Значения ошибки.
                     {
                         for( int ii = 0; ii < R; ++ii ) // Строки проверочной матрицы H.
                         {
@@ -285,14 +285,14 @@ namespace rsexh {
                 }
             }
             {
-                mLut_2_errors.reserve( (N - 1) * (N - 1) * (N - 1) );
+                mLut_2_errors.reserve( (N - 1) * N * N );
                 std::vector< int > c( R );
-                for( int j1 = 0; j1 < N - 1; ++j1 ) // Значения ошибки первого столбца. 
+                for( int j1 = 0; j1 < N; ++j1 ) // Значения ошибки первого столбца. 
                 // Для экономии памяти считаем, что первый столбец всегда на первой позиции (т.е. индекс 0).
                 {
                     for( int i = 1; i < N; ++i ) // Индексы второго столбца H.
                     {
-                        for( int j2 = 0; j2 < N - 1; ++j2 ) // Значения ошибки второго столбца.
+                        for( int j2 = 0; j2 < N; ++j2 ) // Значения ошибки второго столбца.
                         {
                             for( int ii = 0; ii < R; ++ii ) // Строки проверочной матрицы H.
                             {

@@ -134,12 +134,12 @@ void test_golay_code(bool is_systematic) {
    }
 }
 
-void test_rs() {
+void test_rs(int input) {
    rsexh::RsExh code;
 
    std::cout << "N: " << code.N << '\n';
 
-   std::vector<int> a(code.K, 14);
+   std::vector<int> a(code.K, input);
    auto s = rsexh::Encode(a, code.mGf);
    auto c = rsexh::CalculateSyndrome(s, code.R, code.mGf);
 
@@ -151,97 +151,134 @@ void test_rs() {
    rsexh::show_vector(a_dec, "RS decoded:");
 }
 
-void test_rs_correct_1(int position, int val, int pos_2 = -1, int val_2 = -1) {
-   rsexh::RsExh code;
+void test_rs_correct_1(int position, int val) {
+   static rsexh::RsExh code;
+   position %= code.N;
    position = (code.N + position) % code.N;
-   std::cout << "RS 1-error correction test, error position: " << position << '\n';
-   std::vector<int> a(code.K, 14);
+   val = std::abs(val);
+   val %= 16; // Полубайты; элементы поля Галуа GF(2^4).
+   if (val == 0) {
+      val += 1;
+   }
+   // std::cout << "\nRS 1-error correction test, error position: " << position << '\n';
+   std::vector<int> a(code.K, 0);
    auto s = rsexh::Encode(a, code.mGf);
-   rsexh::show_vector(a, "RS input:");
-   rsexh::show_vector(s, "RS output:");
+   // rsexh::show_vector(a, "RS input:");
+   // rsexh::show_vector(s, "RS output:");
    for (int pos = 0; auto& el : s) {
       const bool error = (pos == position);
-      const bool error_2 = (pos == pos_2);
       if (error)
          el ^= val; // Полубайт.
-      if (error_2)
-         el ^= val_2;
       pos++;
    }
+   // rsexh::show_vector(s, "Channel output:");
    auto c = rsexh::CalculateSyndrome(s, code.R, code.mGf);
-   rsexh::show_vector(c, "cyndrome:");
-   if (auto it = code.mLut_1_errors.find(c); it != code.mLut_1_errors.end()) {
-      std::cout << "Correction 1-error\n";
-      const auto [pos, corrector_idx] = it.operator*().second;
-      const int channel_value = s.at(pos);
-      s[pos] = code.mGf.Sub(channel_value - 1, corrector_idx) + 1; // idx = value - 1 => value = idx + 1.
-      c = rsexh::CalculateSyndrome(s, code.R, code.mGf);
-      bool is_ok = true;
-      for (const auto& el_c: c) {
-         is_ok &= el_c == 0;
-      }
-      assert(is_ok);
+   bool is_ok = true;
+   for (const auto& el_c: c) {
+      is_ok &= el_c == 0;
    }
-   auto a_dec = rsexh::Decode(s, code.R, code.mGf);
-   rsexh::show_vector(s, "RS output:");
-   rsexh::show_vector(c, "cyndrome:");
-   rsexh::show_vector(a_dec, "RS decoded:");
-   std::cout << (a_dec == a ? "Corrected" : "Failure") << std::endl;
-   assert(a_dec == a);
-}
-
-void test_rs_correct_2(int position_1, int position_2, int val_1, int val_2, int position_3 = -1, int val_3 = -1) {
-   rsexh::RsExh code;
-   position_1 = (code.N + position_1) % code.N;
-   position_2 = (code.N + position_2) % code.N;
-   std::cout << "RS 2-error correction test, error positions: " << position_1 << ", " << position_2 << '\n';
-   std::vector<int> a(code.K, 14);
-   auto s = rsexh::Encode(a, code.mGf);
-   rsexh::show_vector(a, "RS input:");
-   rsexh::show_vector(s, "RS output:");
-   for (int pos = 0; auto& el : s) {
-      const bool error1 = (pos == position_1);
-      const bool error2 = (pos == position_2);
-      const bool error3 = (pos == position_3);
-      if (error1)
-         el ^= val_1;
-      if (error2)
-         el ^= val_2;
-      if (error3)
-         el ^= val_3;
-      pos++;
-   }
-   rsexh::show_vector(s, "Channel output:");
-   auto c = rsexh::CalculateSyndrome(s, code.R, code.mGf);
-   rsexh::show_vector(c, "cyndrome:");
-   for (int k = 0; k < code.N - 1; k++) {
-      if (auto it = code.mLut_2_errors.find(c); it != code.mLut_2_errors.end()) {
-         const auto [pos_2nd, corrector_indices] = it.operator*().second;
-         const int idx_1 = k;
-         const int idx_2 = pos_2nd + k;
-         std::cout << "Correction 2-error: " << pos_2nd << ", " << k << std::endl;
-         const int channel_value_1 = s.at(idx_1);
-         const int channel_value_2 = s.at(idx_2);
-         const auto [corrector_idx_1, corrector_idx_2] = corrector_indices;
-         std::cout << "Correction indices: " << corrector_idx_1 << ", " << corrector_idx_2 << std::endl;
-         s[idx_1] = code.mGf.Sub(channel_value_1 - 1, corrector_idx_1) + 1;
-         s[idx_2] = code.mGf.Sub(channel_value_2 - 1, corrector_idx_2) + 1; 
+   // rsexh::show_vector(c, "cyndrome 1:");
+   if (!is_ok) {
+      if (auto it = code.mLut_1_errors.find(c); it != code.mLut_1_errors.end()) {
+         // std::cout << "Correction 1-error\n";
+         const auto [pos, corrector_idx] = it.operator*().second;
+         const int channel_value = s.at(pos);
+         s[pos] = code.mGf.Sub(channel_value - 1, corrector_idx) + 1; // idx = value - 1 => value = idx + 1.
          c = rsexh::CalculateSyndrome(s, code.R, code.mGf);
-         bool is_ok = true;
+         is_ok = true;
          for (const auto& el_c: c) {
             is_ok &= el_c == 0;
          }
          assert(is_ok);
-         break;
       }
-      rsexh::ShiftLeftSyndrome<code.p, code.q>(c); // Сдвиг - имеется ввиду сдвиг соответствующего вектора ошибки.
    }
-   auto a_dec = rsexh::Decode(s, code.R, code.mGf);
-   rsexh::show_vector(s, "Corrected channel output:");
-   rsexh::show_vector(c, "cyndrome:");
-   rsexh::show_vector(a_dec, "RS decoded:");
-   std::cout << (a_dec == a ? "Corrected" : "Failure") << std::endl;
-   assert(a_dec == a);
+   if (is_ok) {
+      auto a_dec = rsexh::Decode(s, code.R, code.mGf);
+      // rsexh::show_vector(s, "RS output:");
+      // rsexh::show_vector(c, "cyndrome 2:");
+      // rsexh::show_vector(a_dec, "RS decoded:");
+      // std::cout << "Ok" << std::endl;
+      assert(a_dec == a);
+   } else {
+      std::cout << "Failure 1-error correction." << std::endl;
+      assert( 1 == 0 );
+   }
+}
+
+void test_rs_correct_2(int position_1, int position_2, int val_1, int val_2) {
+   static rsexh::RsExh code;
+   val_1 = std::abs(val_1);
+   val_2 = std::abs(val_2);
+   position_1 %= code.N;
+   position_2 %= code.N;
+   position_1 = (code.N + position_1) % code.N;
+   position_2 = (code.N + position_2) % code.N;
+   if (position_1 == position_2)
+      return;
+   val_1 %= 16; // Полубайты; элементы поля Галуа GF(2^4).
+   val_2 %= 16;
+   if (val_1 == 0) {
+      val_1 += 1;
+   }
+   if (val_2 == 0) {
+      val_2 += 1;
+   }
+   // std::cout << "\nRS 2-error correction test, positions: " << position_1 << ", " << position_2 << ", values: " << val_1 << ", " << val_2 << '\n';
+   std::vector<int> a(code.K, 0);
+   auto s = rsexh::Encode(a, code.mGf);
+   // rsexh::show_vector(a, "RS input:");
+   // rsexh::show_vector(s, "RS output:");
+   for (int pos = 0; auto& el : s) {
+      const bool error1 = (pos == position_1);
+      const bool error2 = (pos == position_2);
+      if (error1)
+         el ^= val_1;
+      if (error2)
+         el ^= val_2;
+      pos++;
+   }
+   // rsexh::show_vector(s, "Channel output:");
+   auto c = rsexh::CalculateSyndrome(s, code.R, code.mGf);
+   bool is_ok = true;
+   for (const auto& el_c: c) {
+      is_ok &= el_c == 0;
+   }
+   // rsexh::show_vector(c, "cyndrome 1:");
+   if (!is_ok) {
+      for (int k = 0; k < code.N - 1; k++) {
+         if (auto it = code.mLut_2_errors.find(c); it != code.mLut_2_errors.end()) {
+            const auto [pos_2nd, corrector_indices] = it.operator*().second;
+            const int idx_1 = k;
+            const int idx_2 = pos_2nd + k;
+            // std::cout << "Correction 2-error: " << pos_2nd << ", " << k << std::endl;
+            const int channel_value_1 = s.at(idx_1);
+            const int channel_value_2 = s.at(idx_2);
+            const auto [corrector_idx_1, corrector_idx_2] = corrector_indices;
+            // std::cout << "Correction indices: " << corrector_idx_1 << ", " << corrector_idx_2 << std::endl;
+            s[idx_1] = code.mGf.Sub(channel_value_1 - 1, corrector_idx_1) + 1;
+            s[idx_2] = code.mGf.Sub(channel_value_2 - 1, corrector_idx_2) + 1; 
+            c = rsexh::CalculateSyndrome(s, code.R, code.mGf);
+            is_ok = true;
+            for (const auto& el_c: c) {
+               is_ok &= el_c == 0;
+            }
+            assert(is_ok);
+            break;
+         }
+         rsexh::ShiftLeftSyndrome<code.p, code.q>(c); // Сдвиг - имеется ввиду сдвиг соответствующего вектора ошибки.
+      }
+   }
+   if (is_ok) {
+      auto a_dec = rsexh::Decode(s, code.R, code.mGf);
+      // rsexh::show_vector(s, "Corrected channel output:");
+      // rsexh::show_vector(c, "cyndrome 2:");
+      // rsexh::show_vector(a_dec, "RS decoded:");
+      assert(a_dec == a);
+      // std::cout << "Ok" << std::endl;
+   } else {
+      std::cout << "Failure 2-error correction." << std::endl;
+      assert( 1 == 0 );
+   }
 }
 
 double measure_ber(double ber, int factor) {
@@ -414,6 +451,7 @@ double measure_ber(double ber, int factor) {
             hamming::show_codeword(a, code.mHammingCode.K, "Input a: ");
             hamming::show_codeword(a_received, code.mHammingCode.K, "Decoded a: ");
             rsexh::show_matrix(code.mHammingCode.mWorkH, "Work matrix: ");
+             rsexh::show_matrix(code.mHammingCode.selected, "Selected matrix: ");
             return -1.;
          }
          for (int i = 0; i < code.mHammingCode.K; ++i) {
@@ -491,18 +529,12 @@ int main( int argc, char* argv[] )
    }
    std::cout << "Decoder BER: " << output_ber << std::endl;
 
-   // test_rs();
-   
-   // test_rs_correct_1(0);
-   // test_rs_correct_1(1);
-   // test_rs_correct_1(-1);
-   // 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 8
-   // test_rs_correct_1(14, 2, 15, 8);
+   // test_rs(0);
+   // test_rs(15);
 
-   // test_rs_correct_2(0, 1, 15, 15);
-   // test_rs_correct_2(1, 2, 15, 15);
-   // test_rs_correct_2(-1, -2, 15, 15);
-   // 0, 0, 1, 0, 0, 0, 0, 0, 0, 4, 0, 1, 0, 0, 0
-   // test_rs_correct_2(2, 9, 4, 1, 11, 1);
+   // for (;;) {
+   //    test_rs_correct_1(roll_uint(), roll_uint());
+   //    test_rs_correct_2(roll_uint(), roll_uint(), roll_uint(), roll_uint());
+   // }
    return 0;
 }
