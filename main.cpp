@@ -451,7 +451,7 @@ double measure_ber(double ber, int factor) {
             hamming::show_codeword(a, code.mHammingCode.K, "Input a: ");
             hamming::show_codeword(a_received, code.mHammingCode.K, "Decoded a: ");
             rsexh::show_matrix(code.mHammingCode.mWorkH, "Work matrix: ");
-             rsexh::show_matrix(code.mHammingCode.selected, "Selected matrix: ");
+             rsexh::show_matrix(code.mHammingCode.mErasureSubmatrix, "Selected matrix: ");
             return -1.;
          }
          for (int i = 0; i < code.mHammingCode.K; ++i) {
@@ -508,7 +508,7 @@ int main( int argc, char* argv[] )
    // 0.005 : 
    // 0.010 : 
    // 0.015 : 
-   // 0.020 : 2.8e-5
+   // 0.020 : 2.e-5
    // 0.025 : 
    // 0.030 : 
 
@@ -522,7 +522,7 @@ int main( int argc, char* argv[] )
       }
       output_ber += (out_ber - output_ber) / counter;
       const double rel_error = output_ber != 0. ? std::abs(prev_ber - output_ber) / output_ber : 1.;
-      std::cout << "decoder BER: " << output_ber << ", counter: " << counter << ", channel BER: " << ber << " (sample ber = " << out_ber << ")" << std::endl;
+      std::cout << "decoder BER: " << output_ber << "\tcounter: " << counter << "\tchannel BER: " << ber << "\t(sample ber = " << out_ber << ")" << std::endl;
       if (out_ber > 0 && rel_error < 1.e-4) {
          break;
       }
