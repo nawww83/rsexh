@@ -417,7 +417,6 @@ void SimplifyManyOfPass(Matrix<int>& parity_check, Matrix<int>& selected) {
              std::swap( v[ a ], v[ b ] );
           }
        }
-       mWorkH = mHsys; // Перед декодированием рабочую копию обновляем исходной проверочной матрицей.
        auto& parity_check = mWorkH;
        // Определяем индексы стертых символов.
        std::vector< int > ids;
@@ -479,6 +478,9 @@ void SimplifyManyOfPass(Matrix<int>& parity_check, Matrix<int>& selected) {
           }
          //  std::cout << "idx: " << idx << ", erased: " << erased << ", good rows: " << good_rows.size() << std::endl;
           v[ ids.at(where_unit) ] = recovered;
+       }
+       if (good_rows.size() < erased) {
+         mWorkH = mHsys; // Неудачное восстановление стертых символов: рабочую копию обновляем исходной проверочной матрицей.
        }
        while (v.size() > K)
           v.pop_back();
