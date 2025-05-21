@@ -90,7 +90,7 @@ void test_golay_code(bool is_systematic) {
       }
    };
    std::vector<std::set<int>> test_erasures = {{2, 5, 20}, {1, 6, 9, 12}, {3, 7, 17}, {2, 3, 14}, {0, 4, 13, 15, 16}, 
-         {10, 11, 16, 17}, {4, 9, 10, 11, 14}, {0, 1, 6, 9, 11}, {0, 2, 5, 6, 8, 10}, {1, 3, 7, 19}};
+         {10, 11, 16, 17}, {4, 9, 10, 11, 14}, {0, 1, 6, 9, 11}, {0, 2, 5, 6, 8, 10}, {1, 3, 7, 19}, {0, 8, 9, 16, 21}};
    mHammingCode.SwitchToSystematic(is_systematic);
    hamming::CodeWord<int, M2> a(mHammingCode.K);
    for (int erasure_round = 0; const auto& erasures : test_erasures) {
@@ -469,7 +469,7 @@ int main( int argc, char* argv[] )
    // 0.005 : 
    // 0.010 : 
    // 0.015 : 
-   // 0.020 : 1.e-5
+   // 0.020 : 2.8e-5
    // 0.025 : 
    // 0.030 : 
 
