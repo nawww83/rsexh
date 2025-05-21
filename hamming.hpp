@@ -233,7 +233,7 @@
   * которые соответствуют столбцам selected из проверочной матрицы.
   * O(R^2)
   */
-void SimplifyManyOfPass(Matrix<int>& parity_check, Matrix<int>& selected, int swap_direction = 0) {
+void SimplifyManyOfPass(Matrix<int>& parity_check, Matrix<int>& selected, int swap_direction) {
    [[maybe_unused]] int counter = 0;
    const int R = parity_check.size();
    assert(R > 0);
@@ -453,48 +453,26 @@ void SimplifyManyOfPass(Matrix<int>& parity_check, Matrix<int>& selected, int sw
        }
        erased = ids.size();
        // Выбираем часть проверочной матрицы - подматрицу.
-      //  Matrix< int > selected;
-      mErasureSubmatrix.clear();
-       for( int j = 0; j < R; ++j )
-       {
-          mErasureSubmatrix.emplace_back( erased, 0 );
-          for( int i = 0; auto idx : ids )
-             mErasureSubmatrix[ j ][ i++ ] = parity_check.at( j ).at( idx );
-       }
-       // Упрощаем подматрицу: минимизируем количество единиц в каждой строке.
-       // Параллельно модифицируем полную проверочную матрицу - ее рабочую копию.
-       SimplifyManyOfPass(parity_check, mErasureSubmatrix);
-      //  show_matrix(work_H, "Simplified work H:");
-       // Ищем базис по стертым столбцам - строки с единственной единицей - "хорошие" строки.
-       std::vector< int > good_rows;
-       int bad_strategy = 0;
-       for( int j = 0; j < R; ++j )
-       {
-         if (good_rows.size() == erased)
-            break;
-         int weight = 0;
-         for( int k = 0; k < erased; ++k ) {
-            weight += mErasureSubmatrix.at( j ).at( k ) != 0;
-         }
-         if( weight == 1 ) {
-            good_rows.push_back( j );
-         }
-         if (weight > 1) {
-            bad_strategy = 1; // Выбрана неудачная стратегия упрощения матрицы.
-         }
-       }
-       if (bad_strategy != 0) {
-         mWorkH = mHsys;
-         mErasureSubmatrix.clear();
+       auto select_erasure_submatrix = [this, &parity_check](std::vector< int >& ids) {
+          mErasureSubmatrix.clear();
+          const int erased = ids.size();
          for( int j = 0; j < R; ++j )
          {
             mErasureSubmatrix.emplace_back( erased, 0 );
             for( int i = 0; auto idx : ids )
                mErasureSubmatrix[ j ][ i++ ] = parity_check.at( j ).at( idx );
          }
-         SimplifyManyOfPass(parity_check, mErasureSubmatrix, 1);
+       };
+      select_erasure_submatrix(ids);
+       // Упрощаем подматрицу: минимизируем количество единиц в каждой строке.
+       // Параллельно модифицируем полную проверочную матрицу - ее рабочую копию.
+       SimplifyManyOfPass(parity_check, mErasureSubmatrix, 0);
+      //  show_matrix(work_H, "Simplified work H:");
+       // Ищем базис по стертым столбцам - строки с единственной единицей - "хорошие" строки.
+       std::vector< int > good_rows;
+       auto select_good_rows = [this, &good_rows](int erased) -> int {
+         int bad_strategy = 0;
          good_rows.clear();
-         bad_strategy = 0;
          for( int j = 0; j < R; ++j )
          {
             if (good_rows.size() == erased)
@@ -510,6 +488,14 @@ void SimplifyManyOfPass(Matrix<int>& parity_check, Matrix<int>& selected, int sw
                bad_strategy = 1; // Выбрана неудачная стратегия упрощения матрицы.
             }
          }
+         return bad_strategy;
+       };
+       int bad_strategy = select_good_rows(erased);
+       if (bad_strategy != 0) {
+         parity_check = mHsys;
+         select_erasure_submatrix(ids);
+         SimplifyManyOfPass(parity_check, mErasureSubmatrix, 1);
+         bad_strategy = select_good_rows(erased);
        }
        // Восстанавливаем стертые символы.
        for( const auto& row : good_rows )
@@ -538,7 +524,7 @@ void SimplifyManyOfPass(Matrix<int>& parity_check, Matrix<int>& selected, int sw
           v[ ids.at(where_unit) ] = recovered;
        }
        if (bad_strategy || (erased >= D)) {
-         mWorkH = mHsys; // Потенциально неудачное восстановление стертых символов: 
+         parity_check = mHsys; // Потенциально неудачное восстановление стертых символов: 
          // рабочую копию обновляем исходной проверочной матрицей.
        }
        while (v.size() > K)
