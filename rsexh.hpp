@@ -233,7 +233,7 @@ namespace rsexh {
 
         static constexpr int R2 = 11; // Количество проверочных символов внешнего кода.
         static constexpr int M2 = K; // Количество внутренних символов внешнего кода.
-        hamming::HammingExtended< R2, M2, int > mHammingCode{
+        hamming::HammingExtended< int, R2, M2 > mHammingCode{
             Matrix<int>{ // Код Голея, циклический. Кодовое расстояние - 7.
                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1}, 
                 {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0}, 

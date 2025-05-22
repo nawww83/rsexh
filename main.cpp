@@ -24,7 +24,7 @@ void test_ex_hamming_code(bool is_systematic) {
    std::cout << "Test Extended Hamming (default) code: " << (is_systematic ? "systematic" : "nonsystematic") << std::endl;;
    static constexpr int R2 = 6; // Количество проверочных символов внешнего кода.
    static constexpr int M2 = 9;  // Количество внутренних символов внешнего кода.
-   static hamming::HammingExtended< R2, M2, int > mHammingCode;
+   static hamming::HammingExtended< int, R2, M2 > mHammingCode;
    std::vector<std::set<int>> test_erasures = {{2, 5, 20}, {3, 7, 17}, {2, 3, 14}, {11, 14}, {1, 2, 9, 12}};
    mHammingCode.SwitchToSystematic(is_systematic);
    hamming::CodeWord<int, M2> a(mHammingCode.K);
@@ -52,7 +52,8 @@ void test_ex_hamming_code(bool is_systematic) {
       }
       // hamming::show_codeword(s_h, mHammingCode.K, "Channel output v: ");
       int erased;
-      const bool is_ok_hamming = mHammingCode.Decode(s_h, erased);
+      int was_changed_strategy;
+      const bool is_ok_hamming = mHammingCode.Decode(s_h, erased, was_changed_strategy);
       bool is_equal = true;
       for (int i = 0; i < mHammingCode.K; ++i) {
          is_equal &= a.at(i) == s_h.at(i);
@@ -74,7 +75,7 @@ void test_golay_code(bool is_systematic) {
    std::cout << "Test Golay code: " << (is_systematic ? "systematic" : "nonsystematic") << std::endl;
    static constexpr int R2 = 11; // Количество проверочных символов внешнего кода.
    static constexpr int M2 = 9;  // Количество внутренних символов внешнего кода.
-   static hamming::HammingExtended< R2, M2, int > mHammingCode{
+   static hamming::HammingExtended< int, R2, M2 > mHammingCode{
       rsexh::Matrix<int>{ // Код Голея, циклический. Кодовое расстояние - 7.
             {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1}, 
             {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 0}, 
@@ -116,7 +117,8 @@ void test_golay_code(bool is_systematic) {
       }
       // hamming::show_codeword(s_h, mHammingCode.K, "Channel output v: ");
       int erased;
-      const bool is_ok_hamming = mHammingCode.Decode(s_h, erased);
+      int was_changed_strategy;
+      const bool is_ok_hamming = mHammingCode.Decode(s_h, erased, was_changed_strategy);
       bool is_equal = true;
       for (int i = 0; i < mHammingCode.K; ++i) {
          is_equal &= a.at(i) == s_h.at(i);
@@ -417,7 +419,8 @@ double measure_ber(double ber, int factor) {
       // std::cout << "Decode Hamming: " << a_received.size() << std::endl;
       int erased;
       // hamming::show_codeword(a_received, code.mHammingCode.K, "Received Hamming input v: ");
-      const bool is_ok_hamming = code.mHammingCode.Decode(a_received, erased);
+      [[maybe_unused]] int was_changed_strategy;
+      const bool is_ok_hamming = code.mHammingCode.Decode(a_received, erased, was_changed_strategy);
       // if (erased) {
       //    std::cout << (is_ok_hamming ? "Ok" : "Failure") << ", were erased: " << erased << std::endl;
       // }
@@ -426,8 +429,11 @@ double measure_ber(double ber, int factor) {
       for (int i = 0; i < code.mHammingCode.K; ++i) {
          is_equal &= a.at(i) == a_received.at(i);
       }
+      // if (was_changed_strategy) {
+      //    std::cout << "is equal after strategy changing: " << (is_equal ? "yes" : "no") << std::endl;
+      // }
       if (!is_equal) {
-         const int code_distance = 7;
+         const int code_distance = code.mHammingCode.D;
          int bad_correction = 0; // Была неисправимая ошибка.
          for (int pos = 0; const auto el : was_1_error_correction) {
             if (el && error_q.at(pos) != 1) {
@@ -450,8 +456,7 @@ double measure_ber(double ber, int factor) {
             rsexh::show_vector(error_q, "Channel errors (q)");
             hamming::show_codeword(a, code.mHammingCode.K, "Input a: ");
             hamming::show_codeword(a_received, code.mHammingCode.K, "Decoded a: ");
-            rsexh::show_matrix(code.mHammingCode.mWorkH, "Work matrix: ");
-             rsexh::show_matrix(code.mHammingCode.mErasureSubmatrix, "Selected matrix: ");
+            rsexh::show_matrix(code.mHammingCode.mErasureSubmatrix, "Selected matrix: ");
             return -1.;
          }
          for (int i = 0; i < code.mHammingCode.K; ++i) {
@@ -508,7 +513,7 @@ int main( int argc, char* argv[] )
    // 0.005 : 
    // 0.010 : 
    // 0.015 : 
-   // 0.020 : 2.e-5
+   // 0.020 : 1.5e-5
    // 0.025 : 
    // 0.030 : 
 
