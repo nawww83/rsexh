@@ -22,7 +22,7 @@ auto roll_error = [urbg = std::mt19937{seed},
 
 void test_ex_hamming_code(bool is_systematic) {
    std::cout << "Test Extended Hamming (default) code: " << (is_systematic ? "systematic" : "nonsystematic") << std::endl;;
-   static constexpr int R2 = 6; // Количество проверочных символов внешнего кода.
+   static constexpr int R2 = 6;  // Количество проверочных символов внешнего кода.
    static constexpr int M2 = 9;  // Количество внутренних символов внешнего кода.
    static hamming::HammingExtended< int, R2, M2 > mHammingCode;
    std::vector<std::set<int>> test_erasures = {{2, 5, 20}, {3, 7, 17}, {2, 3, 14}, {11, 14}, {1, 2, 9, 12}};
@@ -512,10 +512,11 @@ int main( int argc, char* argv[] )
    // Set the Golay code (23, 12) with the code distance 7. Total R = 69%.
    // 0.005 : 
    // 0.010 : 
-   // 0.015 : 
+   // 0.015 : 6.0e-7
    // 0.020 : 1.5e-5
-   // 0.025 : 
-   // 0.030 : 
+   // 0.025 : 2.8e-4
+   // 0.030 : 0.0041
+   // 0.100 : 0.465
 
    const double ber = 0.02;
    double output_ber = 0;
