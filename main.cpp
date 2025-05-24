@@ -29,7 +29,7 @@ void test_ex_hamming_code(bool is_systematic) {
    mHammingCode.SwitchToSystematic(is_systematic);
    hamming::CodeWord<int, M2> a(mHammingCode.K);
    for (int erasure_round = 0; const auto& erasures : test_erasures) {
-      std::cout << " ... round: " << erasure_round << "... ";
+      std::cout << " ... round " << erasure_round << "... ";
       erasure_round++;
       // Source
       for (auto& el : a) {
@@ -95,7 +95,7 @@ void test_golay_code(bool is_systematic) {
    mHammingCode.SwitchToSystematic(is_systematic);
    hamming::CodeWord<int, M2> a(mHammingCode.K);
    for (int erasure_round = 0; const auto& erasures : test_erasures) {
-      std::cout << " ... round: " << erasure_round << "... ";
+      std::cout << " ... round " << erasure_round << "... ";
       erasure_round++;
       // Source
       for (auto& el : a) {
@@ -497,28 +497,32 @@ int main( int argc, char* argv[] )
    // Case A.
    // RS (15, 10, 6) in mode 1- and 2-error correction.
    // Default Extended Hamming code (32, 26) with the code distance 4. Total R = 46%.
-   // 0.002 : 
-   // 0.005 : 
-   // 0.010 : 
-   // 0.015 : 
-   // 0.020 : 
-   // 0.025 : 
-   // 0.030 : 
-   // 0.100 : 
-   // 0.200 : 
+   // 0.005 : 1.7e-6
+   // 0.010 : 3.6e-5
+   // 0.015 : 8.3e-4
+   // 0.020 : 0.010
+   // 0.025 : 0.046
+   // 0.030 : 0.103
+   // 0.035 : 0.156
+   // 0.040 : 0.200
+   // 0.045 : 0.237
+   // 0.050 : 0.273
+   // 0.100 : 0.465
    
    // Case B.
    // RS (15, 9, 7) in mode 1- and 2-error correction.
    // Set the Golay code (23, 12) with the code distance 7. Total R = 69%.
-   // 0.005 : 
-   // 0.010 : 
-   // 0.015 : 6.0e-7
-   // 0.020 : 1.5e-5
-   // 0.025 : 2.8e-4
-   // 0.030 : 0.0041
+   // 0.015 : 8.5e-7
+   // 0.020 : 1.03e-5
+   // 0.025 : 2.25e-4
+   // 0.030 : 0.00268
+   // 0.035 : 0.017
+   // 0.040 : 0.060
+   // 0.045 : 0.134
+   // 0.050 : 0.215
    // 0.100 : 0.465
 
-   const double ber = 0.02;
+   const double ber = 0.1;
    double output_ber = 0;
    for (double counter = 1;; counter++) {
       double prev_ber = output_ber;
