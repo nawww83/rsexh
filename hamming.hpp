@@ -403,7 +403,7 @@
     /**
      * Декодировать принятый вектор в режиме стирания ошибки.
      */
-    bool Decode( CodeWord< T, M >& v, int& erased, int& was_changed_strategy )
+    bool Decode( CodeWord< T, M >& v, int& erased )
     {
        assert(v.size() == N && "Input size is wrong");
        if (!mIsSystematic) {

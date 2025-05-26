@@ -52,8 +52,7 @@ void test_ex_hamming_code(bool is_systematic) {
       }
       // hamming::show_codeword(s_h, mHammingCode.K, "Channel output v: ");
       int erased;
-      int was_changed_strategy;
-      const bool is_ok_hamming = mHammingCode.Decode(s_h, erased, was_changed_strategy);
+      const bool is_ok_hamming = mHammingCode.Decode(s_h, erased);
       bool is_equal = true;
       for (int i = 0; i < mHammingCode.K; ++i) {
          is_equal &= a.at(i) == s_h.at(i);
@@ -117,8 +116,7 @@ void test_golay_code(bool is_systematic) {
       }
       // hamming::show_codeword(s_h, mHammingCode.K, "Channel output v: ");
       int erased;
-      int was_changed_strategy;
-      const bool is_ok_hamming = mHammingCode.Decode(s_h, erased, was_changed_strategy);
+      const bool is_ok_hamming = mHammingCode.Decode(s_h, erased);
       bool is_equal = true;
       for (int i = 0; i < mHammingCode.K; ++i) {
          is_equal &= a.at(i) == s_h.at(i);
@@ -419,19 +417,11 @@ double measure_ber(double ber, int factor) {
       // std::cout << "Decode Hamming: " << a_received.size() << std::endl;
       int erased;
       // hamming::show_codeword(a_received, code.mHammingCode.K, "Received Hamming input v: ");
-      [[maybe_unused]] int was_changed_strategy;
-      const bool is_ok_hamming = code.mHammingCode.Decode(a_received, erased, was_changed_strategy);
-      // if (erased) {
-      //    std::cout << (is_ok_hamming ? "Ok" : "Failure") << ", were erased: " << erased << std::endl;
-      // }
-      // std::cout << "Check input equality\n";
+      const bool is_ok_hamming = code.mHammingCode.Decode(a_received, erased);
       bool is_equal = true;
       for (int i = 0; i < code.mHammingCode.K; ++i) {
          is_equal &= a.at(i) == a_received.at(i);
       }
-      // if (was_changed_strategy) {
-      //    std::cout << "is equal after strategy changing: " << (is_equal ? "yes" : "no") << std::endl;
-      // }
       if (!is_equal) {
          const int code_distance = code.mHammingCode.D;
          int bad_correction = 0; // Была неисправимая ошибка.
@@ -522,7 +512,7 @@ int main( int argc, char* argv[] )
    // 0.050 : 0.215
    // 0.100 : 0.465
 
-   const double ber = 0.1;
+   const double ber = 0.015;
    double output_ber = 0;
    for (double counter = 1;; counter++) {
       double prev_ber = output_ber;
